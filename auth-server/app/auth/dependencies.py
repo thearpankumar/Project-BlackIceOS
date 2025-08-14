@@ -1,12 +1,12 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
-from typing import Optional
 import logging
 
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+
+from app.core.security import verify_token
 from app.database.connection import get_database
 from app.database.models import User
-from app.core.security import verify_token
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -36,17 +36,17 @@ async def get_current_user(
         # Verify JWT token
         payload = verify_token(credentials.credentials)
         user_id = payload.get("sub")
-        
+
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing user ID",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         # Get user from database
         user = db.query(User).filter(User.id == int(user_id)).first()
-        
+
         if not user:
             logger.warning(f"Token valid but user not found: {user_id}")
             raise HTTPException(
@@ -54,9 +54,9 @@ async def get_current_user(
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         return user
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -65,7 +65,7 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
 async def get_current_active_user(
@@ -89,14 +89,14 @@ async def get_current_active_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account"
         )
-    
+
     return current_user
 
 
 async def get_optional_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_database)
-) -> Optional[User]:
+) -> User | None:
     """
     Get current user optionally (for endpoints that work with or without auth)
     
@@ -109,7 +109,7 @@ async def get_optional_current_user(
     """
     if not credentials:
         return None
-    
+
     try:
         return await get_current_user(credentials, db)
     except HTTPException:
@@ -139,7 +139,7 @@ def require_admin_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required"
         )
-    
+
     return current_user
 
 
@@ -163,28 +163,28 @@ async def validate_api_key_access(
         HTTPException: If user doesn't have access to the API key
     """
     from app.database.models import APIKey
-    
+
     # Check if user has this API key
     api_key = db.query(APIKey).filter(
         APIKey.user_id == current_user.id,
         APIKey.key_name == key_name
     ).first()
-    
+
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"API key '{key_name}' not found for user"
         )
-    
+
     return True
 
 
 class RateLimiter:
     """Simple rate limiter for authentication endpoints"""
-    
+
     def __init__(self):
         self.attempts = {}  # In production, use Redis or similar
-    
+
     def is_rate_limited(self, identifier: str, max_attempts: int, window_minutes: int) -> bool:
         """
         Check if identifier is rate limited
@@ -197,32 +197,31 @@ class RateLimiter:
         Returns:
             bool: True if rate limited, False otherwise
         """
-        import time
         from datetime import datetime, timedelta
-        
+
         now = datetime.utcnow()
         window_start = now - timedelta(minutes=window_minutes)
-        
+
         # Clean old attempts
         if identifier in self.attempts:
             self.attempts[identifier] = [
-                attempt for attempt in self.attempts[identifier] 
+                attempt for attempt in self.attempts[identifier]
                 if attempt > window_start
             ]
-        
+
         # Check if rate limited
         if identifier in self.attempts:
             return len(self.attempts[identifier]) >= max_attempts
-        
+
         return False
-    
+
     def record_attempt(self, identifier: str):
         """Record a login attempt"""
         from datetime import datetime
-        
+
         if identifier not in self.attempts:
             self.attempts[identifier] = []
-        
+
         self.attempts[identifier].append(datetime.utcnow())
 
 
@@ -245,7 +244,7 @@ async def check_login_rate_limit(
         HTTPException: If rate limited
     """
     from app.core.config import settings
-    
+
     # Check by username
     username = credentials.get("username", "")
     if rate_limiter.is_rate_limited(username, settings.LOGIN_RATE_LIMIT, 60):
@@ -254,7 +253,7 @@ async def check_login_rate_limit(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many login attempts. Please try again later."
         )
-    
+
     # Check by IP
     if request_ip and rate_limiter.is_rate_limited(request_ip, settings.LOGIN_RATE_LIMIT * 2, 60):
         logger.warning(f"Login rate limit exceeded for IP: {request_ip}")
@@ -262,7 +261,7 @@ async def check_login_rate_limit(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many login attempts from this IP. Please try again later."
         )
-    
+
     # Record attempts
     rate_limiter.record_attempt(username)
     if request_ip:

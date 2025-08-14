@@ -1,18 +1,18 @@
-import os
 import logging
-from typing import Generator
-from sqlalchemy import create_engine, MetaData
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
+import os
+from collections.abc import Generator
+
+from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Database URL from environment with fallback
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
+    "DATABASE_URL",
     "postgresql://kali_auth:password@localhost:5432/kali_auth_db"
 )
 
@@ -98,7 +98,7 @@ def get_database_info() -> dict:
     """
     try:
         db = SessionLocal()
-        
+
         # Get database version and basic info
         if "postgresql" in DATABASE_URL.lower():
             result = db.execute("SELECT version()").fetchone()
@@ -111,7 +111,7 @@ def get_database_info() -> dict:
         else:
             db_version = "Unknown"
             db_type = "Unknown"
-        
+
         # Get table count
         if "postgresql" in DATABASE_URL.lower():
             table_count_result = db.execute(
@@ -121,11 +121,11 @@ def get_database_info() -> dict:
             table_count_result = db.execute(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
             ).fetchone()
-        
+
         table_count = table_count_result[0] if table_count_result else 0
-        
+
         db.close()
-        
+
         return {
             "type": db_type,
             "version": db_version,
@@ -153,26 +153,27 @@ def cleanup_expired_sessions() -> int:
         int: Number of expired sessions removed
     """
     try:
-        from .models import Session as UserSession
         from datetime import datetime
-        
+
+        from .models import Session as UserSession
+
         db = SessionLocal()
-        
+
         # Delete expired sessions
         expired_count = db.query(UserSession).filter(
             UserSession.expires_at < datetime.utcnow()
         ).count()
-        
+
         db.query(UserSession).filter(
             UserSession.expires_at < datetime.utcnow()
         ).delete()
-        
+
         db.commit()
         db.close()
-        
+
         if expired_count > 0:
             logger.info(f"Cleaned up {expired_count} expired sessions")
-        
+
         return expired_count
     except Exception as e:
         logger.error(f"Failed to cleanup expired sessions: {e}")
@@ -190,10 +191,10 @@ def initialize_database() -> bool:
         # Create tables
         if not create_tables():
             return False
-        
+
         # Clean up any expired sessions on startup
         cleanup_expired_sessions()
-        
+
         logger.info("Database initialized successfully")
         return True
     except Exception as e:
