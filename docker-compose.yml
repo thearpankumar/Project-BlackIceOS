@@ -12,6 +12,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - DEBUG=${DEBUG}
     volumes:
       - ./auth-server/app:/app/app:ro
     depends_on:
