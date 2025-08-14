@@ -1,7 +1,7 @@
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -161,7 +161,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "detail": errors,
             "error_type": "validation_error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
     )
 
@@ -176,7 +176,7 @@ async def value_error_exception_handler(request: Request, exc: ValueError):
         content={
             "detail": str(exc),
             "error_type": "value_error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
     )
 
@@ -191,7 +191,7 @@ async def internal_server_error_handler(request: Request, exc: Exception):
         content={
             "detail": "Internal server error occurred",
             "error_code": "INTERNAL_ERROR",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
     )
 
@@ -213,7 +213,7 @@ async def health_check():
         database="connected" if db_healthy else "disconnected",
         version="1.0.0",
         service="kali-ai-os-auth",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         uptime_seconds=uptime_seconds,
     )
 
@@ -237,7 +237,7 @@ async def database_status():
         "database_version": db_info["version"],
         "table_count": db_info["table_count"],
         "status": "ok" if db_info["healthy"] else "error",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -265,7 +265,7 @@ async def root():
             "documentation": "/docs" if settings.DEBUG else None,
         },
         "supported_providers": ["groq", "google_genai"],
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -292,7 +292,7 @@ async def system_info():
         "cors_origins": (
             settings.ALLOWED_ORIGINS if settings.DEBUG else ["***"]
         ),  # Hide in production
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -321,7 +321,7 @@ async def admin_stats():
         total_api_keys = db.query(APIKey).count()
         total_sessions = (
             db.query(UserSession)
-            .filter(UserSession.expires_at > datetime.utcnow())
+            .filter(UserSession.expires_at > datetime.now(UTC))
             .count()
         )
 
@@ -332,7 +332,7 @@ async def admin_stats():
             "active_sessions": total_sessions,
             "database_healthy": check_database_health(),
             "uptime_hours": (time.time() - startup_time) / 3600,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     finally:

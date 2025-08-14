@@ -1,5 +1,5 @@
 # ruff: noqa: S107
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt  # type: ignore
@@ -67,11 +67,11 @@ class SecurityManager:
         to_encode = data.copy()
 
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(UTC) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(hours=self.expiration_hours)
+            expire = datetime.now(UTC) + timedelta(hours=self.expiration_hours)
 
-        to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "access"})
+        to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "access"})
 
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
         # jwt.encode returns str in PyJWT 2.x, bytes in 1.x
@@ -90,9 +90,9 @@ class SecurityManager:
             str: JWT refresh token
         """
         to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(days=self.refresh_expiration_days)
+        expire = datetime.now(UTC) + timedelta(days=self.refresh_expiration_days)
 
-        to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "refresh"})
+        to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "refresh"})
 
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
         # jwt.encode returns str in PyJWT 2.x, bytes in 1.x
@@ -132,7 +132,7 @@ class SecurityManager:
 
             # Check expiration
             exp_timestamp = payload.get("exp")
-            if exp_timestamp and datetime.utcnow().timestamp() > exp_timestamp:
+            if exp_timestamp and datetime.now(UTC).timestamp() > exp_timestamp:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Token has expired",
@@ -183,7 +183,7 @@ class SecurityManager:
 
             exp_timestamp = payload.get("exp")
             if exp_timestamp:
-                return datetime.utcnow().timestamp() > float(exp_timestamp)
+                return datetime.now(UTC).timestamp() > float(exp_timestamp)
             return True
         except Exception:
             return True

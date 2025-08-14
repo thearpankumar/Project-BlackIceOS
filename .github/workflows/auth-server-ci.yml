@@ -194,6 +194,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test]
 
+    defaults:
+      run:
+        working-directory: .
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -213,7 +217,6 @@ jobs:
 
     - name: Test Docker image
       run: |
-        cd auth-server
         # Test that the image can be built and basic imports work
         docker run --rm kali-auth-server:test python -c "from app.main import app; print('✅ App imports successfully')"
 
@@ -222,11 +225,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test]
 
+    defaults:
+      run:
+        working-directory: .
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Start services with docker-compose
+    - name: Start services with docker compose
       run: |
         # Create test environment file
         cat > .env << EOF
@@ -237,7 +244,7 @@ jobs:
         EOF
 
         # Start services
-        docker-compose up -d --build
+        docker compose up -d --build
 
         # Wait for services to be ready
         sleep 30
@@ -262,15 +269,15 @@ jobs:
       if: failure()
       run: |
         echo "=== Auth Server Logs ==="
-        docker-compose logs auth-server
+        docker compose logs auth-server
         echo "=== PostgreSQL Logs ==="
-        docker-compose logs postgres
+        docker compose logs postgres
         echo "=== Redis Logs ==="
-        docker-compose logs redis
+        docker compose logs redis
 
     - name: Cleanup
       if: always()
-      run: docker-compose down -v
+      run: docker compose down -v
 
   notify-status:
     name: Notification

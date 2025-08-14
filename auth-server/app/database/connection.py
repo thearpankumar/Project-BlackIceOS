@@ -156,7 +156,7 @@ def cleanup_expired_sessions() -> int:
         int: Number of expired sessions removed
     """
     try:
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         from .models import Session as UserSession
 
@@ -165,12 +165,12 @@ def cleanup_expired_sessions() -> int:
         # Delete expired sessions
         expired_count = (
             db.query(UserSession)
-            .filter(UserSession.expires_at < datetime.utcnow())
+            .filter(UserSession.expires_at < datetime.now(UTC))
             .count()
         )
 
         db.query(UserSession).filter(
-            UserSession.expires_at < datetime.utcnow()
+            UserSession.expires_at < datetime.now(UTC)
         ).delete()
 
         db.commit()

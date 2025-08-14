@@ -200,9 +200,9 @@ class RateLimiter:
         Returns:
             bool: True if rate limited, False otherwise
         """
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         window_start = now - timedelta(minutes=window_minutes)
 
         # Clean old attempts
@@ -221,12 +221,12 @@ class RateLimiter:
 
     def record_attempt(self, identifier: str):
         """Record a login attempt"""
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         if identifier not in self.attempts:
             self.attempts[identifier] = []
 
-        self.attempts[identifier].append(datetime.utcnow())
+        self.attempts[identifier].append(datetime.now(UTC))
 
 
 # Global rate limiter instance
