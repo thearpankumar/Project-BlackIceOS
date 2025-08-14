@@ -218,8 +218,16 @@ jobs:
 
     - name: Test Docker image
       run: |
+        # Generate test encryption key
+        ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
+        
         # Test that the image can be built and basic imports work
-        docker run --rm kali-auth-server:test uv run python -c "from app.main import app; print('✅ App imports successfully')"
+        docker run --rm \
+          -e ENCRYPTION_KEY="$ENCRYPTION_KEY" \
+          -e JWT_SECRET_KEY=test-jwt-secret-for-docker-test \
+          -e DEBUG=true \
+          kali-auth-server:test \
+          uv run python -c "from app.main import app; print('✅ App imports successfully')"
 
   integration-test:
     name: Integration Tests
