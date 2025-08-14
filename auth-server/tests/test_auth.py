@@ -19,7 +19,9 @@ class TestUserRegistration:
         assert "password" not in data
         assert "password_hash" not in data
 
-    def test_user_registration_duplicate_username(self, client: TestClient, sample_user_data):
+    def test_user_registration_duplicate_username(
+        self, client: TestClient, sample_user_data
+    ):
         """Test registration fails with duplicate username"""
         # Register first user
         client.post("/auth/register", json=sample_user_data)
@@ -28,14 +30,16 @@ class TestUserRegistration:
         duplicate_data = {
             "username": sample_user_data["username"],
             "email": "different@example.com",
-            "password": "DifferentPassword123!"
+            "password": "DifferentPassword123!",
         }
         response = client.post("/auth/register", json=duplicate_data)
 
         assert response.status_code == 400
         assert "already registered" in response.json()["detail"].lower()
 
-    def test_user_registration_duplicate_email(self, client: TestClient, sample_user_data):
+    def test_user_registration_duplicate_email(
+        self, client: TestClient, sample_user_data
+    ):
         """Test registration fails with duplicate email"""
         # Register first user
         client.post("/auth/register", json=sample_user_data)
@@ -44,14 +48,16 @@ class TestUserRegistration:
         duplicate_data = {
             "username": "differentuser",
             "email": sample_user_data["email"],
-            "password": "DifferentPassword123!"
+            "password": "DifferentPassword123!",
         }
         response = client.post("/auth/register", json=duplicate_data)
 
         assert response.status_code == 400
         assert "already registered" in response.json()["detail"].lower()
 
-    def test_user_registration_invalid_email(self, client: TestClient, sample_user_data):
+    def test_user_registration_invalid_email(
+        self, client: TestClient, sample_user_data
+    ):
         """Test registration fails with invalid email format"""
         invalid_data = sample_user_data.copy()
         invalid_data["email"] = "invalid-email"
@@ -60,7 +66,9 @@ class TestUserRegistration:
 
         assert response.status_code == 422
 
-    def test_user_registration_weak_password(self, client: TestClient, sample_user_data):
+    def test_user_registration_weak_password(
+        self, client: TestClient, sample_user_data
+    ):
         """Test registration fails with weak password"""
         weak_passwords = ["123", "password", "abc"]
 
@@ -75,7 +83,9 @@ class TestUserRegistration:
 class TestUserLogin:
     """Test user login functionality"""
 
-    def test_user_login_success(self, client: TestClient, sample_user_data, sample_api_keys):
+    def test_user_login_success(
+        self, client: TestClient, sample_user_data, sample_api_keys
+    ):
         """Test successful user login returns JWT token and encrypted API keys"""
         # Register user first
         client.post("/auth/register", json=sample_user_data)
@@ -83,7 +93,7 @@ class TestUserLogin:
         # Login
         login_data = {
             "username": sample_user_data["username"],
-            "password": sample_user_data["password"]
+            "password": sample_user_data["password"],
         }
         response = client.post("/auth/login", json=login_data)
 
@@ -103,7 +113,9 @@ class TestUserLogin:
         token = data["access_token"]
         assert len(token.split(".")) == 3  # JWT has 3 parts
 
-    def test_user_login_with_api_keys(self, client: TestClient, sample_user_data, sample_api_keys, db_session: Session):
+    def test_user_login_with_api_keys(
+        self, client: TestClient, sample_user_data, sample_api_keys, db_session: Session
+    ):
         """Test login returns encrypted API keys when user has them stored"""
         # Register user
         response = client.post("/auth/register", json=sample_user_data)
@@ -114,7 +126,7 @@ class TestUserLogin:
             api_key = APIKey(
                 user_id=user_id,
                 key_name=key_name,
-                encrypted_key=f"encrypted_{key_value}"  # Mock encryption for test
+                encrypted_key=f"encrypted_{key_value}",  # Mock encryption for test
             )
             db_session.add(api_key)
         db_session.commit()
@@ -122,7 +134,7 @@ class TestUserLogin:
         # Login
         login_data = {
             "username": sample_user_data["username"],
-            "password": sample_user_data["password"]
+            "password": sample_user_data["password"],
         }
         response = client.post("/auth/login", json=login_data)
 
@@ -138,10 +150,7 @@ class TestUserLogin:
 
     def test_user_login_invalid_username(self, client: TestClient):
         """Test login fails with invalid username"""
-        login_data = {
-            "username": "nonexistentuser",
-            "password": "somepassword"
-        }
+        login_data = {"username": "nonexistentuser", "password": "somepassword"}
         response = client.post("/auth/login", json=login_data)
 
         assert response.status_code == 401
@@ -155,14 +164,16 @@ class TestUserLogin:
         # Try login with wrong password
         login_data = {
             "username": sample_user_data["username"],
-            "password": "wrongpassword"
+            "password": "wrongpassword",
         }
         response = client.post("/auth/login", json=login_data)
 
         assert response.status_code == 401
         assert "invalid credentials" in response.json()["detail"].lower()
 
-    def test_user_login_inactive_user(self, client: TestClient, sample_user_data, db_session: Session):
+    def test_user_login_inactive_user(
+        self, client: TestClient, sample_user_data, db_session: Session
+    ):
         """Test login fails for inactive user"""
         # Register user first
         response = client.post("/auth/register", json=sample_user_data)
@@ -176,7 +187,7 @@ class TestUserLogin:
         # Try login
         login_data = {
             "username": sample_user_data["username"],
-            "password": sample_user_data["password"]
+            "password": sample_user_data["password"],
         }
         response = client.post("/auth/login", json=login_data)
 
@@ -187,17 +198,21 @@ class TestUserLogin:
 class TestAPIKeyManagement:
     """Test API key storage and retrieval"""
 
-    def test_api_keys_encrypted_in_database(self, client: TestClient, sample_user_data, sample_api_keys, db_session: Session):
+    def test_api_keys_encrypted_in_database(
+        self, client: TestClient, sample_user_data, sample_api_keys, db_session: Session
+    ):
         """Test that API keys are stored encrypted in database"""
         # Register user
         response = client.post("/auth/register", json=sample_user_data)
-        user_id = response.json()["id"]
+        response.json()["id"]
 
         # This test will validate that our encryption functions work
         # Implementation will be tested once we create the encryption module
         pass
 
-    def test_api_keys_never_stored_plaintext(self, client: TestClient, sample_user_data, sample_api_keys):
+    def test_api_keys_never_stored_plaintext(
+        self, client: TestClient, sample_user_data, sample_api_keys
+    ):
         """Test that API keys are never stored in plaintext"""
         # This test ensures security - no plaintext API keys in database
         pass
@@ -210,10 +225,13 @@ class TestJWTTokens:
         """Test JWT token can be validated and contains correct claims"""
         # Register and login user
         client.post("/auth/register", json=sample_user_data)
-        login_response = client.post("/auth/login", json={
-            "username": sample_user_data["username"],
-            "password": sample_user_data["password"]
-        })
+        login_response = client.post(
+            "/auth/login",
+            json={
+                "username": sample_user_data["username"],
+                "password": sample_user_data["password"],
+            },
+        )
 
         token = login_response.json()["access_token"]
 
@@ -243,10 +261,13 @@ class TestSessionManagement:
         """Test that login creates a session record"""
         # Register and login
         client.post("/auth/register", json=sample_user_data)
-        response = client.post("/auth/login", json={
-            "username": sample_user_data["username"],
-            "password": sample_user_data["password"]
-        })
+        response = client.post(
+            "/auth/login",
+            json={
+                "username": sample_user_data["username"],
+                "password": sample_user_data["password"],
+            },
+        )
 
         assert response.status_code == 200
         # Session creation will be tested once database models are implemented

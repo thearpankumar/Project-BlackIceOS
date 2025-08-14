@@ -6,14 +6,13 @@ class Settings:
     """Application settings and configuration"""
 
     # Server Configuration
-    HOST: str = os.getenv("HOST", "0.0.0.0")
+    HOST: str = os.getenv("HOST", "0.0.0.0")  # nosec B104
     PORT: int = int(os.getenv("PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     # Database Configuration
     DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql://kali_auth:password@localhost:5432/kali_auth_db"
+        "DATABASE_URL", "postgresql://kali_auth:password@localhost:5432/kali_auth_db"
     )
 
     # Redis Configuration (for session management)
@@ -23,7 +22,9 @@ class Settings:
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(64))
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRATION_HOURS: int = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
-    JWT_REFRESH_EXPIRATION_DAYS: int = int(os.getenv("JWT_REFRESH_EXPIRATION_DAYS", "30"))
+    JWT_REFRESH_EXPIRATION_DAYS: int = int(
+        os.getenv("JWT_REFRESH_EXPIRATION_DAYS", "30")
+    )
 
     # Encryption Configuration
     ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", "")
@@ -39,8 +40,12 @@ class Settings:
     REQUIRE_SPECIAL_CHARS: bool = True
 
     # Rate Limiting
-    LOGIN_RATE_LIMIT: int = int(os.getenv("LOGIN_RATE_LIMIT", "5"))  # attempts per minute
-    REGISTRATION_RATE_LIMIT: int = int(os.getenv("REGISTRATION_RATE_LIMIT", "3"))  # attempts per minute
+    LOGIN_RATE_LIMIT: int = int(
+        os.getenv("LOGIN_RATE_LIMIT", "5")
+    )  # attempts per minute
+    REGISTRATION_RATE_LIMIT: int = int(
+        os.getenv("REGISTRATION_RATE_LIMIT", "3")
+    )  # attempts per minute
 
     # API Key Configuration (for Groq and Google Generative AI)
     SUPPORTED_API_PROVIDERS: list[str] = ["groq", "google_genai"]
@@ -58,9 +63,12 @@ class Settings:
                 # Handle both JSON format and comma-separated
                 if origins_str.startswith("["):
                     import json
+
                     self.ALLOWED_ORIGINS = json.loads(origins_str)
                 else:
-                    self.ALLOWED_ORIGINS = [origin.strip() for origin in origins_str.split(",")]
+                    self.ALLOWED_ORIGINS = [
+                        origin.strip() for origin in origins_str.split(",")
+                    ]
             except Exception:
                 self.ALLOWED_ORIGINS = ["*"]  # Fallback to allow all
         else:
@@ -74,7 +82,9 @@ class Settings:
         # Validate JWT secret key
         if len(self.JWT_SECRET_KEY) < 32:
             if not self.DEBUG:
-                raise ValueError("JWT_SECRET_KEY must be at least 32 characters in production")
+                raise ValueError(
+                    "JWT_SECRET_KEY must be at least 32 characters in production"
+                )
 
         # Validate encryption key
         if not self.ENCRYPTION_KEY:
@@ -84,24 +94,33 @@ class Settings:
             # Validate encryption key format (should be base64 encoded Fernet key)
             try:
                 from cryptography.fernet import Fernet
+
                 # Test if it's a valid Fernet key
                 Fernet(self.ENCRYPTION_KEY.encode())
             except Exception:
                 if not self.DEBUG:
-                    raise ValueError("ENCRYPTION_KEY must be a valid base64-encoded Fernet key")
+                    raise ValueError(
+                        "ENCRYPTION_KEY must be a valid base64-encoded Fernet key"
+                    ) from None
 
         # Validate database URL
         if not self.DATABASE_URL:
             raise ValueError("DATABASE_URL must be configured")
 
         # Validate API providers
-        if not all(provider in ["groq", "google_genai"] for provider in self.SUPPORTED_API_PROVIDERS):
+        if not all(
+            provider in ["groq", "google_genai"]
+            for provider in self.SUPPORTED_API_PROVIDERS
+        ):
             raise ValueError("Invalid API provider in SUPPORTED_API_PROVIDERS")
 
     @property
     def is_production(self) -> bool:
         """Check if running in production mode"""
-        return not self.DEBUG and os.getenv("ENVIRONMENT", "development").lower() == "production"
+        return (
+            not self.DEBUG
+            and os.getenv("ENVIRONMENT", "development").lower() == "production"
+        )
 
     def get_cors_config(self) -> dict:
         """Get CORS configuration for FastAPI"""

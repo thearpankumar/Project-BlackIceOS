@@ -1,7 +1,8 @@
+# ruff: noqa: S107
 from datetime import datetime, timedelta
 from typing import Any
 
-import bcrypt
+import bcrypt  # type: ignore
 import jwt
 from fastapi import HTTPException, status
 
@@ -20,44 +21,46 @@ class SecurityManager:
     def hash_password(self, password: str) -> str:
         """
         Hash a password using bcrypt
-        
+
         Args:
             password: Plain text password
-            
+
         Returns:
             str: Hashed password
         """
-        password_bytes = password.encode('utf-8')
+        password_bytes = password.encode("utf-8")
         salt = bcrypt.gensalt()
         hashed = bcrypt.hashpw(password_bytes, salt)
-        return hashed.decode('utf-8')
+        return str(hashed.decode("utf-8"))
 
     def verify_password(self, password: str, hashed_password: str) -> bool:
         """
         Verify a password against its hash
-        
+
         Args:
             password: Plain text password
             hashed_password: Hashed password from database
-            
+
         Returns:
             bool: True if password matches, False otherwise
         """
         try:
-            password_bytes = password.encode('utf-8')
-            hashed_bytes = hashed_password.encode('utf-8')
-            return bcrypt.checkpw(password_bytes, hashed_bytes)
+            password_bytes = password.encode("utf-8")
+            hashed_bytes = hashed_password.encode("utf-8")
+            return bool(bcrypt.checkpw(password_bytes, hashed_bytes))
         except Exception:
             return False
 
-    def create_access_token(self, data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
+    def create_access_token(
+        self, data: dict[str, Any], expires_delta: timedelta | None = None
+    ) -> str:
         """
         Create a JWT access token
-        
+
         Args:
             data: Data to encode in token
             expires_delta: Custom expiration time
-            
+
         Returns:
             str: JWT token
         """
@@ -68,53 +71,51 @@ class SecurityManager:
         else:
             expire = datetime.utcnow() + timedelta(hours=self.expiration_hours)
 
-        to_encode.update({
-            "exp": expire,
-            "iat": datetime.utcnow(),
-            "type": "access"
-        })
+        to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "access"})
 
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        return encoded_jwt
+        return encoded_jwt.decode("utf-8")
 
     def create_refresh_token(self, data: dict[str, Any]) -> str:
         """
         Create a JWT refresh token
-        
+
         Args:
             data: Data to encode in token
-            
+
         Returns:
             str: JWT refresh token
         """
         to_encode = data.copy()
         expire = datetime.utcnow() + timedelta(days=self.refresh_expiration_days)
 
-        to_encode.update({
-            "exp": expire,
-            "iat": datetime.utcnow(),
-            "type": "refresh"
-        })
+        to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "refresh"})
 
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        return encoded_jwt
+        return encoded_jwt.decode("utf-8")
 
-    def verify_token(self, token: str, token_type: str = "access") -> dict[str, Any]:
+    def verify_token(
+        self,
+        token: str,
+        token_type: str = "access",  # nosec B107
+    ) -> dict[str, Any]:
         """
         Verify and decode a JWT token
-        
+
         Args:
             token: JWT token to verify
             token_type: Expected token type ("access" or "refresh")
-            
+
         Returns:
             Dict[str, Any]: Decoded token payload
-            
+
         Raises:
             HTTPException: If token is invalid or expired
         """
         try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            payload: dict[str, Any] = jwt.decode(
+                token, self.secret_key, algorithms=[self.algorithm]
+            )
 
             # Verify token type
             if payload.get("type") != token_type:
@@ -133,39 +134,39 @@ class SecurityManager:
 
             return payload
 
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired",
-            )
-        except jwt.InvalidTokenError:
+            ) from e
+        except jwt.InvalidTokenError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token",
-            )
+            ) from e
 
     def get_token_payload(self, token: str) -> dict[str, Any] | None:
         """
         Get token payload without verification (for debugging)
-        
+
         Args:
             token: JWT token
-            
+
         Returns:
             Optional[Dict[str, Any]]: Token payload or None if invalid
         """
         try:
-            return jwt.decode(token, options={"verify_signature": False})
+            return jwt.decode(token, options={"verify_signature": False})  # type: ignore
         except Exception:
             return None
 
     def is_token_expired(self, token: str) -> bool:
         """
         Check if token is expired without raising exception
-        
+
         Args:
             token: JWT token
-            
+
         Returns:
             bool: True if expired, False if valid
         """
@@ -176,9 +177,8 @@ class SecurityManager:
 
             exp_timestamp = payload.get("exp")
             if exp_timestamp:
-                return datetime.utcnow().timestamp() > exp_timestamp
-
-            return True  # No expiration means invalid
+                return datetime.utcnow().timestamp() > float(exp_timestamp)
+            return True
         except Exception:
             return True
 
@@ -196,10 +196,10 @@ class PasswordValidator:
     def validate_password(self, password: str) -> tuple[bool, list[str]]:
         """
         Validate password against security requirements
-        
+
         Args:
             password: Password to validate
-            
+
         Returns:
             tuple[bool, list[str]]: (is_valid, list_of_errors)
         """
@@ -207,7 +207,9 @@ class PasswordValidator:
 
         # Check length
         if len(password) < self.min_length:
-            errors.append(f"Password must be at least {self.min_length} characters long")
+            errors.append(
+                f"Password must be at least {self.min_length} characters long"
+            )
 
         # Check uppercase
         if self.require_uppercase and not any(c.isupper() for c in password):
@@ -229,8 +231,16 @@ class PasswordValidator:
 
         # Check for common weak passwords
         weak_passwords = [
-            "password", "123456", "123456789", "qwerty", "abc123",
-            "password123", "admin", "letmein", "welcome", "monkey"
+            "password",
+            "123456",
+            "123456789",
+            "qwerty",
+            "abc123",
+            "password123",
+            "admin",
+            "letmein",
+            "welcome",
+            "monkey",
         ]
         if password.lower() in weak_passwords:
             errors.append("Password is too common and easily guessed")
@@ -240,10 +250,10 @@ class PasswordValidator:
     def get_password_strength_score(self, password: str) -> int:
         """
         Get password strength score (0-100)
-        
+
         Args:
             password: Password to score
-            
+
         Returns:
             int: Strength score (0=very weak, 100=very strong)
         """
@@ -276,12 +286,17 @@ password_validator = PasswordValidator()
 
 
 # Convenience functions for backward compatibility
-def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    data: dict[str, Any], expires_delta: timedelta | None = None
+) -> str:
     """Create JWT access token"""
     return security_manager.create_access_token(data, expires_delta)
 
 
-def verify_token(token: str, token_type: str = "access") -> dict[str, Any]:
+def verify_token(
+    token: str,
+    token_type: str = "access",  # nosec B107
+) -> dict[str, Any]:
     """Verify JWT token"""
     return security_manager.verify_token(token, token_type)
 

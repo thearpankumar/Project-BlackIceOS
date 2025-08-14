@@ -69,7 +69,7 @@ def sample_user_data():
     return {
         "username": "testuser",
         "email": "test@example.com",
-        "password": "SecurePassword123!"
+        "password": "SecurePassword123!",
     }
 
 
@@ -78,5 +78,5 @@ def sample_api_keys():
     """Sample API keys for testing encryption - using Groq and Google Generative AI"""
     return {
         "groq": "gsk_test-groq-api-key-123456789abcdef",
-        "google_genai": "AIzaSy_test-google-genai-key-987654321"
+        "google_genai": "AIzaSy_test-google-genai-key-987654321",
     }

@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database.connection import check_database_health, get_database
-from app.database.models import APIKey, User
+from app.database.models import APIKey
 from app.database.models import Session as UserSession
+from app.database.models import User
 
 
 class TestDatabaseConnection:
@@ -40,7 +42,7 @@ class TestDatabaseModels:
         user = User(
             username="testuser",
             email="test@example.com",
-            password_hash="hashed_password_123"
+            password_hash="hashed_password_123",
         )
 
         db_session.add(user)
@@ -60,7 +62,7 @@ class TestDatabaseModels:
         user1 = User(
             username="testuser",
             email="test@example.com",
-            password_hash="hashed_password_123"
+            password_hash="hashed_password_123",
         )
         db_session.add(user1)
         db_session.commit()
@@ -69,11 +71,11 @@ class TestDatabaseModels:
         user2 = User(
             username="testuser",  # Same username
             email="different@example.com",
-            password_hash="different_hash"
+            password_hash="different_hash",
         )
         db_session.add(user2)
 
-        with pytest.raises(Exception):  # Should raise integrity error
+        with pytest.raises(IntegrityError):  # Should raise integrity error
             db_session.commit()
 
         db_session.rollback()
@@ -82,11 +84,11 @@ class TestDatabaseModels:
         user3 = User(
             username="differentuser",
             email="test@example.com",  # Same email
-            password_hash="different_hash"
+            password_hash="different_hash",
         )
         db_session.add(user3)
 
-        with pytest.raises(Exception):  # Should raise integrity error
+        with pytest.raises(IntegrityError):  # Should raise integrity error
             db_session.commit()
 
     def test_api_key_model_creation(self, db_session: Session):
@@ -95,7 +97,7 @@ class TestDatabaseModels:
         user = User(
             username="testuser",
             email="test@example.com",
-            password_hash="hashed_password"
+            password_hash="hashed_password",
         )
         db_session.add(user)
         db_session.commit()
@@ -105,7 +107,7 @@ class TestDatabaseModels:
         api_key = APIKey(
             user_id=user.id,
             key_name="groq",
-            encrypted_key="encrypted_groq_key_data_123"
+            encrypted_key="encrypted_groq_key_data_123",
         )
 
         db_session.add(api_key)
@@ -125,7 +127,7 @@ class TestDatabaseModels:
         user = User(
             username="testuser",
             email="test@example.com",
-            password_hash="hashed_password"
+            password_hash="hashed_password",
         )
         db_session.add(user)
         db_session.commit()
@@ -133,14 +135,12 @@ class TestDatabaseModels:
 
         # Create multiple API keys
         groq_key = APIKey(
-            user_id=user.id,
-            key_name="groq",
-            encrypted_key="encrypted_groq_key"
+            user_id=user.id, key_name="groq", encrypted_key="encrypted_groq_key"
         )
         google_key = APIKey(
             user_id=user.id,
             key_name="google_genai",
-            encrypted_key="encrypted_google_key"
+            encrypted_key="encrypted_google_key",
         )
 
         db_session.add(groq_key)
@@ -152,7 +152,9 @@ class TestDatabaseModels:
         assert len(retrieved_user.api_keys) == 2
 
         # Test relationship from api_key side
-        retrieved_key = db_session.query(APIKey).filter(APIKey.key_name == "groq").first()
+        retrieved_key = (
+            db_session.query(APIKey).filter(APIKey.key_name == "groq").first()
+        )
         assert retrieved_key.user.username == "testuser"
 
     def test_session_model_creation(self, db_session: Session):
@@ -161,7 +163,7 @@ class TestDatabaseModels:
         user = User(
             username="testuser",
             email="test@example.com",
-            password_hash="hashed_password"
+            password_hash="hashed_password",
         )
         db_session.add(user)
         db_session.commit()
@@ -173,7 +175,7 @@ class TestDatabaseModels:
             session_token="jwt_token_123456789",
             expires_at=datetime.utcnow() + timedelta(hours=24),
             ip_address="192.168.1.100",
-            user_agent="Mozilla/5.0 Test Agent"
+            user_agent="Mozilla/5.0 Test Agent",
         )
 
         db_session.add(session)
@@ -194,7 +196,7 @@ class TestDatabaseModels:
         user = User(
             username="testuser",
             email="test@example.com",
-            password_hash="hashed_password"
+            password_hash="hashed_password",
         )
         db_session.add(user)
         db_session.commit()
@@ -202,9 +204,7 @@ class TestDatabaseModels:
 
         # Add API key
         api_key = APIKey(
-            user_id=user.id,
-            key_name="groq",
-            encrypted_key="encrypted_key"
+            user_id=user.id, key_name="groq", encrypted_key="encrypted_key"
         )
         db_session.add(api_key)
 
@@ -212,14 +212,17 @@ class TestDatabaseModels:
         session = UserSession(
             user_id=user.id,
             session_token="token_123",
-            expires_at=datetime.utcnow() + timedelta(hours=1)
+            expires_at=datetime.utcnow() + timedelta(hours=1),
         )
         db_session.add(session)
         db_session.commit()
 
         # Verify records exist
         assert db_session.query(APIKey).filter(APIKey.user_id == user.id).count() == 1
-        assert db_session.query(UserSession).filter(UserSession.user_id == user.id).count() == 1
+        assert (
+            db_session.query(UserSession).filter(UserSession.user_id == user.id).count()
+            == 1
+        )
 
         # Delete user
         db_session.delete(user)
@@ -227,7 +230,10 @@ class TestDatabaseModels:
 
         # Verify cascade delete worked
         assert db_session.query(APIKey).filter(APIKey.user_id == user.id).count() == 0
-        assert db_session.query(UserSession).filter(UserSession.user_id == user.id).count() == 0
+        assert (
+            db_session.query(UserSession).filter(UserSession.user_id == user.id).count()
+            == 0
+        )
 
 
 class TestDatabaseOperations:
@@ -239,7 +245,7 @@ class TestDatabaseOperations:
         user = User(
             username="cruduser",
             email="crud@example.com",
-            password_hash="hashed_password"
+            password_hash="hashed_password",
         )
         db_session.add(user)
         db_session.commit()
@@ -273,18 +279,14 @@ class TestDatabaseOperations:
         """Test API key last_used timestamp tracking"""
         # Create user and API key
         user = User(
-            username="keyuser",
-            email="key@example.com",
-            password_hash="hashed_password"
+            username="keyuser", email="key@example.com", password_hash="hashed_password"
         )
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
 
         api_key = APIKey(
-            user_id=user.id,
-            key_name="groq",
-            encrypted_key="encrypted_key"
+            user_id=user.id, key_name="groq", encrypted_key="encrypted_key"
         )
         db_session.add(api_key)
         db_session.commit()
@@ -308,7 +310,7 @@ class TestDatabaseOperations:
         user = User(
             username="sessionuser",
             email="session@example.com",
-            password_hash="hashed_password"
+            password_hash="hashed_password",
         )
         db_session.add(user)
         db_session.commit()
@@ -318,14 +320,14 @@ class TestDatabaseOperations:
         expired_session = UserSession(
             user_id=user.id,
             session_token="expired_token",
-            expires_at=datetime.utcnow() - timedelta(hours=1)  # Expired
+            expires_at=datetime.utcnow() - timedelta(hours=1),  # Expired
         )
 
         # Create valid session
         valid_session = UserSession(
             user_id=user.id,
             session_token="valid_token",
-            expires_at=datetime.utcnow() + timedelta(hours=1)  # Valid
+            expires_at=datetime.utcnow() + timedelta(hours=1),  # Valid
         )
 
         db_session.add(expired_session)
@@ -334,17 +336,17 @@ class TestDatabaseOperations:
 
         # Query expired sessions
         now = datetime.utcnow()
-        expired_sessions = db_session.query(UserSession).filter(
-            UserSession.expires_at < now
-        ).all()
+        expired_sessions = (
+            db_session.query(UserSession).filter(UserSession.expires_at < now).all()
+        )
 
         assert len(expired_sessions) == 1
         assert expired_sessions[0].session_token == "expired_token"
 
         # Query valid sessions
-        valid_sessions = db_session.query(UserSession).filter(
-            UserSession.expires_at > now
-        ).all()
+        valid_sessions = (
+            db_session.query(UserSession).filter(UserSession.expires_at > now).all()
+        )
 
         assert len(valid_sessions) == 1
         assert valid_sessions[0].session_token == "valid_token"

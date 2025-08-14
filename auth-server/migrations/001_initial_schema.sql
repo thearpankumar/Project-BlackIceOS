@@ -44,12 +44,12 @@ CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
 -- Insert default admin user (password: 'admin123' - CHANGE IN PRODUCTION)
-INSERT INTO users (username, email, password_hash) VALUES 
+INSERT INTO users (username, email, password_hash) VALUES
 ('admin', 'admin@kali-ai-os.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewVyIslc/u9eJkF6')
 ON CONFLICT (username) DO NOTHING;
 
 -- Add constraint to ensure valid API key types (Groq and Google Generative AI)
-ALTER TABLE api_keys ADD CONSTRAINT chk_valid_key_name 
+ALTER TABLE api_keys ADD CONSTRAINT chk_valid_key_name
 CHECK (key_name IN ('groq', 'google_genai'));
 
 -- Add comments for documentation
