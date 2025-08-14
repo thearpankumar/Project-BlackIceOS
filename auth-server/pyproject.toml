@@ -115,8 +115,9 @@ addopts = [
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
+    "integration: marks tests as integration tests (requires database)",
     "unit: marks tests as unit tests",
+    "database: marks tests that require database connection",
 ]
 
 [tool.coverage.run]
