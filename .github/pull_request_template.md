@@ -16,7 +16,7 @@
 ## Component(s) Affected
 <!-- Mark all that apply -->
 - [ ] 🔐 Authentication Server
-- [ ] 🐳 Docker Configuration  
+- [ ] 🐳 Docker Configuration
 - [ ] 📋 Task Documentation
 - [ ] 🔧 CI/CD Pipeline
 - [ ] 📖 Documentation
@@ -24,9 +24,9 @@
 
 ## Changes Made
 <!-- List the main changes made in this PR -->
-- 
-- 
-- 
+-
+-
+-
 
 ## Testing
 <!-- Describe the tests you ran to verify your changes -->
@@ -92,11 +92,11 @@ Related to #
 ## Review Notes
 <!-- Any specific areas you'd like reviewers to focus on -->
 Please pay special attention to:
-- 
-- 
+-
+-
 
 ---
-<!-- 
+<!--
 For maintainers:
 - Ensure all CI checks pass
 - Verify code follows established patterns

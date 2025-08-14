@@ -3,7 +3,7 @@ name: Auth Server CI/CD
 on:
   push:
     branches: [ master, main, develop ]
-    paths: 
+    paths:
       - 'auth-server/**'
       - '.github/workflows/auth-server-ci.yml'
   pull_request:
@@ -20,7 +20,7 @@ jobs:
   lint-and-format:
     name: Code Quality Checks
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -35,9 +35,7 @@ jobs:
       run: uv python install
 
     - name: Install dependencies
-      run: |
-        uv sync --all-extras
-        uv add --group dev ruff black isort mypy
+      run: uv sync --all-extras
 
     - name: Run ruff linter
       run: uv run ruff check . --output-format=github
@@ -59,11 +57,11 @@ jobs:
     name: Test Suite
     runs-on: ubuntu-latest
     needs: lint-and-format
-    
+
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
-        
+
     services:
       postgres:
         image: postgres:15-alpine
@@ -78,7 +76,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          
+
       redis:
         image: redis:7-alpine
         ports:
@@ -103,9 +101,7 @@ jobs:
       run: uv python install ${{ matrix.python-version }}
 
     - name: Install dependencies
-      run: |
-        uv sync --all-extras
-        uv add --group test pytest pytest-cov pytest-asyncio httpx
+      run: uv sync --all-extras
 
     - name: Set test environment variables
       run: |
@@ -144,7 +140,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: lint-and-format
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -162,14 +158,10 @@ jobs:
       run: uv sync --all-extras
 
     - name: Run bandit security linter
-      run: |
-        uv add --group dev bandit[toml]
-        uv run bandit -r app/ -f json -o bandit-report.json || true
+      run: uv run bandit -r app/ -f json -o bandit-report.json || true
 
     - name: Run safety check for dependencies
-      run: |
-        uv add --group dev safety
-        uv run safety check --json --output safety-report.json || true
+      run: uv run safety check --json --output safety-report.json || true
 
     - name: Upload security scan results
       uses: actions/upload-artifact@v4
@@ -183,7 +175,7 @@ jobs:
     name: Docker Build Test
     runs-on: ubuntu-latest
     needs: [test]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -211,7 +203,7 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [test]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -225,10 +217,10 @@ jobs:
         ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
         DEBUG=true
         EOF
-        
+
         # Start services
         docker-compose up -d --build
-        
+
         # Wait for services to be ready
         sleep 30
 
@@ -236,16 +228,16 @@ jobs:
       run: |
         # Test health endpoint
         curl -f http://localhost:8000/health || exit 1
-        
+
         # Test database status
         curl -f http://localhost:8000/database/status || exit 1
-        
+
         # Test user registration
         curl -X POST http://localhost:8000/auth/register \
           -H "Content-Type: application/json" \
           -d '{"username":"testuser","email":"test@example.com","password":"TestPassword123!"}' \
           -f || exit 1
-        
+
         echo "✅ Integration tests passed"
 
     - name: Show logs on failure
@@ -267,13 +259,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint-and-format, test, security-scan, docker-build, integration-test]
     if: always()
-    
+
     steps:
     - name: Notify success
       if: ${{ needs.lint-and-format.result == 'success' && needs.test.result == 'success' && needs.security-scan.result == 'success' && needs.docker-build.result == 'success' && needs.integration-test.result == 'success' }}
       run: |
         echo "✅ All checks passed! Auth server is ready for deployment."
-        
+
     - name: Notify failure
       if: ${{ contains(needs.*.result, 'failure') }}
       run: |
