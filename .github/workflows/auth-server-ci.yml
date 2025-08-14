@@ -1,0 +1,281 @@
+name: Auth Server CI/CD
+
+on:
+  push:
+    branches: [ master, main, develop ]
+    paths: 
+      - 'auth-server/**'
+      - '.github/workflows/auth-server-ci.yml'
+  pull_request:
+    branches: [ master, main, develop ]
+    paths:
+      - 'auth-server/**'
+      - '.github/workflows/auth-server-ci.yml'
+
+defaults:
+  run:
+    working-directory: auth-server
+
+jobs:
+  lint-and-format:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "0.4.18"
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: |
+        uv sync --all-extras
+        uv add --group dev ruff black isort mypy
+
+    - name: Run ruff linter
+      run: uv run ruff check . --output-format=github
+
+    - name: Run ruff formatter
+      run: uv run ruff format --check .
+
+    - name: Run black formatter check
+      run: uv run black --check --diff .
+
+    - name: Run isort import sorting check
+      run: uv run isort --check-only --diff .
+
+    - name: Run mypy type checking
+      run: uv run mypy app/ --ignore-missing-imports
+      continue-on-error: true  # Don't fail on type errors initially
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+    
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+        
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: test_kali_auth_db
+          POSTGRES_USER: test_kali_auth
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "0.4.18"
+        enable-cache: true
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        uv sync --all-extras
+        uv add --group test pytest pytest-cov pytest-asyncio httpx
+
+    - name: Set test environment variables
+      run: |
+        echo "DATABASE_URL=postgresql://test_kali_auth:test_password@localhost:5432/test_kali_auth_db" >> $GITHUB_ENV
+        echo "REDIS_URL=redis://localhost:6379/0" >> $GITHUB_ENV
+        echo "JWT_SECRET_KEY=test-jwt-secret-key-for-github-actions-only" >> $GITHUB_ENV
+        echo "ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> $GITHUB_ENV
+        echo "DEBUG=true" >> $GITHUB_ENV
+
+    - name: Run database migrations
+      run: |
+        # Wait for PostgreSQL to be ready
+        sleep 5
+        # Run migrations
+        PGPASSWORD=test_password psql -h localhost -U test_kali_auth -d test_kali_auth_db -f migrations/001_initial_schema.sql
+
+    - name: Run tests with coverage
+      run: |
+        uv run pytest tests/ \
+          --cov=app \
+          --cov-report=term-missing \
+          --cov-report=xml \
+          --cov-fail-under=80 \
+          --verbose \
+          --tb=short
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./auth-server/coverage.xml
+        flags: auth-server
+        name: auth-server-coverage
+        fail_ci_if_error: false
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "0.4.18"
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: uv sync --all-extras
+
+    - name: Run bandit security linter
+      run: |
+        uv add --group dev bandit[toml]
+        uv run bandit -r app/ -f json -o bandit-report.json || true
+
+    - name: Run safety check for dependencies
+      run: |
+        uv add --group dev safety
+        uv run safety check --json --output safety-report.json || true
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          auth-server/bandit-report.json
+          auth-server/safety-report.json
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    needs: [test]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./auth-server
+        file: ./auth-server/Dockerfile
+        push: false
+        tags: kali-auth-server:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Docker image
+      run: |
+        cd auth-server
+        # Test that the image can be built and basic imports work
+        docker run --rm kali-auth-server:test python -c "from app.main import app; print('✅ App imports successfully')"
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [test]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Start services with docker-compose
+      run: |
+        # Create test environment file
+        cat > .env << EOF
+        DB_PASSWORD=test_password_123
+        JWT_SECRET_KEY=test-jwt-secret-for-integration-tests-only
+        ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
+        DEBUG=true
+        EOF
+        
+        # Start services
+        docker-compose up -d --build
+        
+        # Wait for services to be ready
+        sleep 30
+
+    - name: Run integration tests
+      run: |
+        # Test health endpoint
+        curl -f http://localhost:8000/health || exit 1
+        
+        # Test database status
+        curl -f http://localhost:8000/database/status || exit 1
+        
+        # Test user registration
+        curl -X POST http://localhost:8000/auth/register \
+          -H "Content-Type: application/json" \
+          -d '{"username":"testuser","email":"test@example.com","password":"TestPassword123!"}' \
+          -f || exit 1
+        
+        echo "✅ Integration tests passed"
+
+    - name: Show logs on failure
+      if: failure()
+      run: |
+        echo "=== Auth Server Logs ==="
+        docker-compose logs auth-server
+        echo "=== PostgreSQL Logs ==="
+        docker-compose logs postgres
+        echo "=== Redis Logs ==="
+        docker-compose logs redis
+
+    - name: Cleanup
+      if: always()
+      run: docker-compose down -v
+
+  notify-status:
+    name: Notification
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, test, security-scan, docker-build, integration-test]
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: ${{ needs.lint-and-format.result == 'success' && needs.test.result == 'success' && needs.security-scan.result == 'success' && needs.docker-build.result == 'success' && needs.integration-test.result == 'success' }}
+      run: |
+        echo "✅ All checks passed! Auth server is ready for deployment."
+        
+    - name: Notify failure
+      if: ${{ contains(needs.*.result, 'failure') }}
+      run: |
+        echo "❌ Some checks failed. Please review the failed jobs above."
+        exit 1

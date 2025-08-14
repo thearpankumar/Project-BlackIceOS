@@ -1,0 +1,185 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ master, main, develop ]
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for better diffs
+
+    - name: Validate PR title
+      uses: amannn/action-semantic-pull-request@v5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        types: |
+          feat
+          fix
+          docs
+          style
+          refactor
+          perf
+          test
+          chore
+          ci
+        requireScope: false
+        
+    - name: Check for breaking changes
+      run: |
+        # Check if there are any breaking changes in auth-server
+        if git diff --name-only origin/master...HEAD | grep -E 'auth-server/(app/database/models\.py|app/auth/routes\.py|app/main\.py)'; then
+          echo "⚠️ Potential breaking changes detected in core files"
+          echo "Please ensure backward compatibility or update version appropriately"
+        fi
+
+    - name: Validate file changes
+      run: |
+        # Ensure no sensitive files are being committed
+        if git diff --name-only origin/master...HEAD | grep -E '\.(env|key|pem|p12)$'; then
+          echo "❌ Sensitive files detected in PR"
+          exit 1
+        fi
+        
+        # Check for TODO comments in new code
+        if git diff origin/master...HEAD | grep -E '^\+.*TODO|^\+.*FIXME|^\+.*HACK'; then
+          echo "⚠️ TODO/FIXME/HACK comments found in new code"
+          echo "Please resolve or create GitHub issues for tracking"
+        fi
+
+  changed-files:
+    name: Detect Changed Components
+    runs-on: ubuntu-latest
+    outputs:
+      auth-server: ${{ steps.changes.outputs.auth-server }}
+      tasks: ${{ steps.changes.outputs.tasks }}
+      docker: ${{ steps.changes.outputs.docker }}
+      
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Detect changes
+      uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          auth-server:
+            - 'auth-server/**'
+          tasks:
+            - 'tasks/**'
+          docker:
+            - 'docker-compose.yml'
+            - '**/Dockerfile'
+
+  auth-server-checks:
+    name: Auth Server Checks
+    needs: changed-files
+    if: needs.changed-files.outputs.auth-server == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Run auth server CI
+      uses: ./.github/workflows/auth-server-ci.yml
+
+  task-validation:
+    name: Task Files Validation
+    needs: changed-files
+    if: needs.changed-files.outputs.tasks == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Validate task files
+      run: |
+        # Check that all task files follow the expected format
+        for task_file in tasks/task*.md; do
+          if [ -f "$task_file" ]; then
+            echo "Validating $task_file..."
+            
+            # Check for required sections
+            if ! grep -q "## What This Task Is About" "$task_file"; then
+              echo "❌ Missing 'What This Task Is About' section in $task_file"
+              exit 1
+            fi
+            
+            if ! grep -q "## Why This Task Is Critical" "$task_file"; then
+              echo "❌ Missing 'Why This Task Is Critical' section in $task_file"
+              exit 1
+            fi
+            
+            # Check for consistent AI provider usage (Groq and Google GenAI)
+            if grep -i "openai\|anthropic" "$task_file" | grep -v "replace.*openai\|update.*anthropic"; then
+              echo "⚠️ Found OpenAI/Anthropic references in $task_file - should use Groq/Google GenAI"
+            fi
+            
+            echo "✅ $task_file validation passed"
+          fi
+        done
+
+  security-review:
+    name: Security Review
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'security') || contains(github.event.pull_request.title, 'security')
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Security focused review
+      run: |
+        echo "🔐 Security-related PR detected"
+        echo "Please ensure:"
+        echo "- No hardcoded credentials or API keys"
+        echo "- Proper input validation and sanitization"
+        echo "- Secure defaults in configuration"
+        echo "- Updated security documentation if needed"
+        
+        # Check for potential security issues
+        if git diff --name-only origin/master...HEAD | grep -E 'auth|security|encrypt|password'; then
+          echo "⚠️ Security-sensitive files modified - extra review required"
+        fi
+
+  size-check:
+    name: PR Size Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Check PR size
+      run: |
+        # Count changed lines
+        CHANGED_LINES=$(git diff --stat origin/master...HEAD | tail -1 | grep -o '[0-9]\+ insertions\|[0-9]\+ deletions' | grep -o '[0-9]\+' | paste -sd+ | bc)
+        
+        echo "Total changed lines: $CHANGED_LINES"
+        
+        if [ "$CHANGED_LINES" -gt 500 ]; then
+          echo "⚠️ Large PR detected (${CHANGED_LINES} lines changed)"
+          echo "Consider breaking this into smaller PRs for easier review"
+        fi
+        
+        # Count changed files
+        CHANGED_FILES=$(git diff --name-only origin/master...HEAD | wc -l)
+        echo "Files changed: $CHANGED_FILES"
+        
+        if [ "$CHANGED_FILES" -gt 20 ]; then
+          echo "⚠️ Many files changed ($CHANGED_FILES files)"
+          echo "Consider splitting into focused PRs"
+        fi
