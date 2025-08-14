@@ -93,7 +93,7 @@ class APIKeyCreate(BaseModel):
     def validate_key_name(cls, v):
         valid_providers = ["groq", "google_genai"]
         if v not in valid_providers:
-            raise ValueError(f'key_name must be one of: {", ".join(valid_providers)}')
+            raise ValueError(f"key_name must be one of: {', '.join(valid_providers)}")
         return v
 
     @validator("api_key")
