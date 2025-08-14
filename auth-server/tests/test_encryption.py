@@ -116,7 +116,8 @@ class TestEncryptionFunctions:
             assert decrypted == api_key, f"Round trip failed for {key_name} key"
 
     def test_encryption_with_different_keys_produces_different_results(
-        self, sample_api_keys
+        self,
+        sample_api_keys
     ):
         """Test that same API key encrypted with different keys produces different results"""
         groq_key = sample_api_keys["groq"]
@@ -157,7 +158,7 @@ class TestEncryptionFunctions:
     def test_encryption_handles_special_characters(self):
         """Test encryption handles API keys with special characters"""
         encryption_key = generate_encryption_key()
-        special_key = "gsk_test-key-with-special-chars!@#$%^&*()_+-={}[]|\\:;\"'<>?,./"
+        special_key = "gsk_test-key-with-special-chars!@#$%^&*()_+-={}[]|\:;\"'<>?,./"
 
         encrypted = encrypt_api_key(special_key, encryption_key)
         decrypted = decrypt_api_key(encrypted, encryption_key)
@@ -248,7 +249,7 @@ class TestEncryptionIntegration:
         encrypted = encrypt_api_key(api_key, encryption_key)
 
         # Encrypted key should be safe for database storage (no special SQL chars)
-        unsafe_chars = ["'", '"', ";", "--", "/*", "*/"]
+        unsafe_chars = ["'", "\"", ";", "--", "/*", "*/"]
         for char in unsafe_chars:
             assert (
                 char not in encrypted
@@ -290,3 +291,49 @@ class TestEncryptionIntegration:
         assert (
             avg_decryption_time < 0.01
         ), f"Decryption too slow: {avg_decryption_time:.4f}s per operation"
+
+
+class TestEncryptionErrorHandling:
+    """Test error handling in encryption functions"""
+
+    def test_decrypt_invalid_token(self):
+        """Test decryption of invalid or corrupted token"""
+        encryption_key = generate_encryption_key()
+        invalid_tokens = [
+            "not_a_real_token",
+            "invalid_base64_$",
+            base64.urlsafe_b64encode(b"not_encrypted_data").decode(),
+        ]
+
+        for token in invalid_tokens:
+            with pytest.raises(ValueError):
+                decrypt_api_key(token, encryption_key)
+
+    def test_encrypt_with_invalid_key(self):
+        """Test encryption with invalid encryption key"""
+        api_key = "gsk_test_key"
+        invalid_keys = [
+            "short",
+            "not_base64_!@#$",
+            base64.urlsafe_b64encode(b"not_a_real_key").decode(),
+        ]
+
+        for key in invalid_keys:
+            with pytest.raises(ValueError):
+                encrypt_api_key(api_key, key)
+
+    def test_decrypt_with_invalid_key(self):
+        """Test decryption with invalid encryption key"""
+        encryption_key = generate_encryption_key()
+        api_key = "gsk_test_key"
+        encrypted = encrypt_api_key(api_key, encryption_key)
+
+        invalid_keys = [
+            "short",
+            "not_base64_!@#$",
+            base64.urlsafe_b64encode(b"not_a_real_key").decode(),
+        ]
+
+        for key in invalid_keys:
+            with pytest.raises(ValueError):
+                decrypt_api_key(encrypted, key)
