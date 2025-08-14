@@ -18,14 +18,22 @@ class EncryptionManager:
         Args:
             encryption_key: Base64 encoded Fernet key. If None, uses settings.ENCRYPTION_KEY
         """
-        self.encryption_key = encryption_key or settings.ENCRYPTION_KEY
+        # Handle None vs empty string differently
+        if encryption_key is None:
+            self.encryption_key = settings.ENCRYPTION_KEY
+        else:
+            self.encryption_key = encryption_key
 
-        if not self.encryption_key:
-            # Generate a key if none provided (for development/testing)
+        # Only generate key when None was passed AND in debug mode
+        if encryption_key is None and not self.encryption_key:
             if settings.DEBUG:
                 self.encryption_key = self.generate_encryption_key()
             else:
                 raise ValueError("ENCRYPTION_KEY must be provided in production")
+
+        # Validate encryption key format (including empty strings)
+        if not self.encryption_key:
+            raise ValueError("Encryption key cannot be empty")
 
         # Validate and initialize Fernet cipher
         try:
@@ -241,7 +249,7 @@ def encrypt_api_key(api_key: str, encryption_key: str | None = None) -> str:
     Returns:
         str: Encrypted API key
     """
-    if encryption_key:
+    if encryption_key is not None:
         manager = EncryptionManager(encryption_key)
         return manager.encrypt_api_key(api_key)
     else:
@@ -259,7 +267,7 @@ def decrypt_api_key(encrypted_api_key: str, encryption_key: str | None = None) -
     Returns:
         str: Plain text API key
     """
-    if encryption_key:
+    if encryption_key is not None:
         manager = EncryptionManager(encryption_key)
         return manager.decrypt_api_key(encrypted_api_key)
     else:

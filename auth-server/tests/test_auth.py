@@ -77,7 +77,7 @@ class TestUserRegistration:
             weak_data["password"] = weak_password
 
             response = client.post("/auth/register", json=weak_data)
-            assert response.status_code == 400
+            assert response.status_code == 422  # Validation errors return 422
 
 
 class TestUserLogin:
