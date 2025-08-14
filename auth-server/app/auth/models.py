@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, ValidationInfo
+from pydantic import BaseModel, ConfigDict, EmailStr, ValidationInfo, field_validator
 
 from ..core.security import password_validator
 
