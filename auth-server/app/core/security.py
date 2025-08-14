@@ -74,7 +74,10 @@ class SecurityManager:
         to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "access"})
 
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        return encoded_jwt.decode("utf-8")
+        # jwt.encode returns str in PyJWT 2.x, bytes in 1.x
+        return (
+            encoded_jwt if isinstance(encoded_jwt, str) else encoded_jwt.decode("utf-8")
+        )
 
     def create_refresh_token(self, data: dict[str, Any]) -> str:
         """
@@ -92,7 +95,10 @@ class SecurityManager:
         to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "refresh"})
 
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        return encoded_jwt.decode("utf-8")
+        # jwt.encode returns str in PyJWT 2.x, bytes in 1.x
+        return (
+            encoded_jwt if isinstance(encoded_jwt, str) else encoded_jwt.decode("utf-8")
+        )
 
     def verify_token(
         self,
