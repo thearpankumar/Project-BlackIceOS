@@ -56,19 +56,19 @@ DISPLAY=:1 echo "AI desktop"      # Should work
 def test_dual_desktop_isolation():
     """Test AI and user desktops don't interfere"""
     # Verify actions on :1 don't affect :0
-    
+
 def test_screen_element_recognition():
     """Test finding GUI elements with OpenCV"""
     # Test finding buttons, text fields in screenshots
-    
+
 def test_safe_click_execution():
     """Test clicks are executed safely"""
     # Test coordinate validation and safety checks
-    
+
 def test_application_automation():
     """Test opening and controlling applications"""
     # Test opening terminal, browser, security tools
-    
+
 def test_user_activity_detection():
     """Test detecting when user is active"""
     # Ensure AI pauses when user is working
@@ -85,11 +85,11 @@ class DesktopController:
     def __init__(self, display=":1"):  # AI desktop
         self.display = display
         os.environ['DISPLAY'] = display
-        
+
         # Configure PyAutoGUI for safety
         pyautogui.FAILSAFE = True  # Move mouse to corner to stop
         pyautogui.PAUSE = 0.1      # Pause between actions
-        
+
     def safe_click(self, x, y, button='left'):
         """Click with safety validation"""
         # 1. Validate coordinates are on screen
@@ -97,14 +97,14 @@ class DesktopController:
         # 3. Switch to AI display
         # 4. Perform click
         # 5. Return success/failure
-        
+
     def safe_type(self, text):
         """Type text safely"""
         # 1. Validate text is safe
-        # 2. Ensure AI display is active  
+        # 2. Ensure AI display is active
         # 3. Type character by character
         # 4. Handle special characters
-        
+
     def find_element(self, template_image, confidence=0.8):
         """Find GUI element using template matching"""
         # 1. Capture current screen
@@ -125,15 +125,15 @@ class OpenCVMatcher:
         # 1. Load images
         img = cv2.imread(screenshot)
         template_img = cv2.imread(template)
-        
+
         # 2. Convert to grayscale
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
-        
+
         # 3. Template matching
         result = cv2.matchTemplate(img_gray, template_gray, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        
+
         # 4. Return result with confidence
         if max_val >= confidence:
             return {
@@ -142,7 +142,7 @@ class OpenCVMatcher:
                 'confidence': max_val
             }
         return {'found': False}
-        
+
     def find_text(self, screenshot, text):
         """Find text in screenshot using OCR"""
         # Use pytesseract to find text on screen
@@ -160,20 +160,20 @@ class UserActivityMonitor:
     def __init__(self):
         self.last_activity = time.time()
         self.activity_threshold = 300  # 5 minutes
-        
+
     def get_current_activity_level(self):
         """Determine if user is active"""
         # Check mouse and keyboard activity on :0
         # Check CPU usage of user processes
         # Return: 'idle', 'light', 'intensive'
-        
+
     def is_safe_for_ai_activity(self):
         """Check if AI can safely operate"""
         # Don't interfere if user is:
         # - In video call (zoom, teams)
         # - Giving presentation
         # - Actively typing/clicking
-        
+
     def wait_for_safe_moment(self):
         """Wait until safe to perform AI actions"""
         # Monitor user activity
@@ -186,7 +186,7 @@ class UserActivityMonitor:
 class SecurityAppController:
     def __init__(self, desktop_controller):
         self.desktop = desktop_controller
-        
+
     def open_burpsuite(self):
         """Open and setup Burp Suite"""
         # 1. Launch burpsuite application
@@ -194,7 +194,7 @@ class SecurityAppController:
         # 3. Handle license/update dialogs
         # 4. Navigate to proxy tab
         # 5. Return when ready for use
-        
+
     def configure_burp_proxy(self, target_url, port=8080):
         """Configure Burp Suite proxy for target"""
         # 1. Find proxy tab using template matching
@@ -202,13 +202,13 @@ class SecurityAppController:
         # 3. Configure target scope
         # 4. Set proxy port
         # 5. Start intercepting
-        
+
     def open_terminal(self):
         """Open terminal on AI desktop"""
         # 1. Use keyboard shortcut or application menu
         # 2. Wait for terminal to open
         # 3. Return terminal ready for commands
-        
+
     def run_command_in_terminal(self, command):
         """Execute command in terminal"""
         # 1. Click in terminal window
@@ -226,7 +226,7 @@ mkdir -p src/desktop/templates/{burpsuite,terminal,browser,nessus}
 # Capture template images for common elements:
 # - Burp Suite proxy tab, start button, target field
 # - Terminal window, command prompt
-# - Browser address bar, navigation buttons  
+# - Browser address bar, navigation buttons
 # - Common OK/Cancel/Apply buttons
 
 # Test template recognition
@@ -248,9 +248,9 @@ class IsolationManager:
         # 2. Verify window manager isolation
         # 3. Test that clicks on :1 don't affect :0
         # 4. Monitor for any cross-desktop interference
-        
+
     def emergency_stop(self):
-        """Stop all desktop automation immediately"""  
+        """Stop all desktop automation immediately"""
         # 1. Kill all PyAutoGUI operations
         # 2. Return control to user
         # 3. Log emergency stop event
@@ -260,11 +260,11 @@ class IsolationManager:
 def test_complete_desktop_workflow():
     controller = DesktopController(display=":1")
     app_controller = SecurityAppController(controller)
-    
+
     # Test opening and controlling Burp Suite
     app_controller.open_burpsuite()
     app_controller.configure_burp_proxy("https://example.com")
-    
+
     # Verify user desktop unaffected
     assert_user_desktop_unchanged()
 ```
@@ -354,9 +354,9 @@ Samsung-AI-os/
 def test_opencv_element_detection():
     """Test OpenCV-based element detection accuracy"""
     from src.desktop.recognition.opencv_matcher import OpenCVMatcher
-    
+
     matcher = OpenCVMatcher()
-    
+
     # Test with various GUI elements
     test_cases = [
         {
@@ -370,34 +370,34 @@ def test_opencv_element_detection():
             'expected_confidence': 0.90
         }
     ]
-    
+
     for case in test_cases:
         result = matcher.find_template(
             screenshot=case['screenshot'],
             template=case['template']
         )
-        
+
         assert result.confidence >= case['expected_confidence']
         assert result.location is not None
 
 def test_text_recognition_accuracy():
     """Test OCR text recognition in GUI elements"""
     from src.desktop.recognition.text_recognition import TextRecognizer
-    
+
     recognizer = TextRecognizer()
-    
+
     test_screenshots = [
         'tests/fixtures/test_screenshots/dialog_with_text.png',
         'tests/fixtures/test_screenshots/menu_items.png',
         'tests/fixtures/test_screenshots/button_labels.png'
     ]
-    
+
     for screenshot in test_screenshots:
         recognized_text = recognizer.extract_text(screenshot)
-        
+
         # Should find some text
         assert len(recognized_text) > 0
-        
+
         # Text should be readable
         confidence = recognizer.get_text_confidence(recognized_text)
         assert confidence > 0.7
@@ -427,15 +427,15 @@ class DesktopController:
         self.display = display
         self.safety_enabled = True
         self.automation_active = False
-        
+
         # Configure PyAutoGUI
         pyautogui.FAILSAFE = True
         pyautogui.PAUSE = 0.1
-        
+
     def safe_click(self, x: int, y: int, button: str = 'left') -> ClickResult:
         """Safely click at coordinates with validation"""
         start_time = time.time()
-        
+
         # Validate coordinates
         if not self._validate_coordinates(x, y):
             return ClickResult(
@@ -443,7 +443,7 @@ class DesktopController:
                 clicked_location=None,
                 error_message="Coordinates outside screen bounds"
             )
-        
+
         # Check if safe to perform action
         if not self._is_safe_to_act():
             return ClickResult(
@@ -451,14 +451,14 @@ class DesktopController:
                 clicked_location=None,
                 error_message="User activity detected, action blocked"
             )
-        
+
         try:
             # Switch to AI display
             self._ensure_ai_display()
-            
+
             # Perform click
             pyautogui.click(x, y, button=button)
-            
+
             execution_time = time.time() - start_time
             return ClickResult(
                 success=True,
@@ -472,12 +472,12 @@ class DesktopController:
                 error_message=str(e),
                 execution_time=time.time() - start_time
             )
-    
+
     def safe_type(self, text: str, interval: float = 0.01) -> Dict[str, Any]:
         """Safely type text with validation"""
         # Implementation here
         pass
-        
+
     def find_element(self, template: str, confidence: float = 0.8) -> Optional[Dict]:
         """Find GUI element using template matching"""
         # Implementation here
@@ -496,7 +496,7 @@ class VirtualDesktop:
         self.display = display
         self.resolution = resolution
         self.is_running = False
-        
+
     def start_virtual_display(self) -> bool:
         """Start Xvfb virtual display"""
         try:
@@ -506,27 +506,27 @@ class VirtualDesktop:
                 '-screen', '0', f'{self.resolution}x24',
                 '-ac', '+extension', 'GLX'
             ]
-            
+
             self.xvfb_process = subprocess.Popen(cmd)
-            
+
             # Wait for display to be ready
             time.sleep(2)
-            
+
             # Set DISPLAY environment variable
             os.environ['DISPLAY'] = self.display
-            
+
             self.is_running = True
             return True
-            
+
         except Exception as e:
             print(f"Failed to start virtual display: {e}")
             return False
-    
+
     def stop_virtual_display(self) -> bool:
         """Stop virtual display"""
         # Implementation here
         pass
-        
+
     def get_display_info(self) -> Dict[str, Any]:
         """Get current display information"""
         # Implementation here
@@ -549,16 +549,16 @@ class UserActivityMonitor:
             'light': 60,      # 1 minute
             'intensive': 10   # 10 seconds
         }
-        
+
     def get_current_activity_level(self) -> str:
         """Determine current user activity level"""
         # Check mouse and keyboard activity
         mouse_active = self._check_mouse_activity()
         keyboard_active = self._check_keyboard_activity()
-        
+
         # Check CPU usage of user processes
         user_cpu = self._get_user_process_cpu()
-        
+
         # Determine activity level
         if not mouse_active and not keyboard_active and user_cpu < 5:
             return 'idle'
@@ -566,25 +566,25 @@ class UserActivityMonitor:
             return 'light'
         else:
             return 'intensive'
-    
+
     def is_user_in_critical_task(self) -> bool:
         """Check if user is in critical task (presentation, call, etc.)"""
         critical_processes = [
             'zoom', 'teams', 'skype', 'discord',
             'obs-studio', 'libreoffice-impress'
         ]
-        
+
         for proc in psutil.process_iter(['name']):
-            if proc.info['name'] and any(cp in proc.info['name'].lower() 
+            if proc.info['name'] and any(cp in proc.info['name'].lower()
                                        for cp in critical_processes):
                 return True
         return False
-    
+
     def _check_mouse_activity(self) -> bool:
         """Check for recent mouse movement"""
         # Implementation here
         pass
-        
+
     def _check_keyboard_activity(self) -> bool:
         """Check for recent keyboard input"""
         # Implementation here
@@ -605,25 +605,25 @@ class OpenCVMatcher:
             cv2.TM_CCORR_NORMED,
             cv2.TM_SQDIFF_NORMED
         ]
-        
-    def find_template(self, screenshot: str, template: str, 
+
+    def find_template(self, screenshot: str, template: str,
                      confidence: float = 0.8) -> Dict:
         """Find template in screenshot using OpenCV"""
         # Load images
         img = cv2.imread(screenshot, cv2.IMREAD_COLOR)
         template_img = cv2.imread(template, cv2.IMREAD_COLOR)
-        
+
         if img is None or template_img is None:
             return {'found': False, 'error': 'Could not load images'}
-        
+
         # Convert to grayscale
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         template_gray = cv2.cvtColor(template_img, cv2.COLOR_BGR2GRAY)
-        
+
         # Perform template matching
         result = cv2.matchTemplate(img_gray, template_gray, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        
+
         if max_val >= confidence:
             return {
                 'found': True,
@@ -637,7 +637,7 @@ class OpenCVMatcher:
                 'confidence': max_val,
                 'location': None
             }
-    
+
     def find_multiple_templates(self, screenshot: str, templates: list) -> list:
         """Find multiple templates in a single screenshot"""
         # Implementation here
@@ -654,17 +654,17 @@ class IsolationManager:
         self.user_display = ":0"
         self.ai_display = ":1"
         self.isolation_active = True
-        
+
     def ensure_isolation(self) -> bool:
         """Ensure AI operations don't affect user desktop"""
         # Verify AI is operating on correct display
         current_display = os.environ.get('DISPLAY')
         if current_display != self.ai_display:
             self._switch_to_ai_display()
-        
+
         # Check for any cross-display interference
         return self._verify_no_interference()
-    
+
     def emergency_isolation(self) -> bool:
         """Emergency isolation of AI activities"""
         # Immediately stop all automation
@@ -682,7 +682,7 @@ class PermissionGuard:
             'burpsuite', 'nmap', 'wireshark', 'metasploit',
             'gnome-terminal', 'firefox', 'chromium'
         ]
-        
+
     def validate_action(self, action: Dict) -> bool:
         """Validate if automation action is allowed"""
         # Check application permissions
@@ -809,32 +809,32 @@ python -m pytest tests/desktop/test_safety_isolation.py -v
 def test_automation_speed():
     """Test automation actions meet speed requirements"""
     controller = DesktopController()
-    
+
     # Test click speed
     start_time = time.time()
     result = controller.safe_click(500, 300)
     click_time = time.time() - start_time
-    
+
     assert click_time < 0.1  # Click should be under 100ms
-    
+
     # Test typing speed
     start_time = time.time()
     controller.safe_type("test command")
     type_time = time.time() - start_time
-    
+
     assert type_time < 0.5  # Typing should be under 500ms
 
 def test_screen_recognition_speed():
     """Test screen recognition meets performance requirements"""
     matcher = OpenCVMatcher()
-    
+
     start_time = time.time()
     result = matcher.find_template(
         screenshot="test_screenshot.png",
         template="test_template.png"
     )
     recognition_time = time.time() - start_time
-    
+
     assert recognition_time < 1.0  # Recognition under 1 second
 ```
 

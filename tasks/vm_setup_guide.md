@@ -106,7 +106,7 @@ During installation, configure:
 - **Username**: kali
 - **Password**: (choose strong password)
 - **Partitioning**: Use entire disk, single partition
-- **Software**: 
+- **Software**:
   - Desktop environment (XFCE recommended for performance)
   - SSH server
   - Standard system utilities
@@ -299,7 +299,7 @@ echo "  cd /mnt/shared && source venv/bin/activate"
 ### 1. Port Forwarding Setup
 The VM startup script includes these port forwards:
 - **SSH**: Host port 2222 → VM port 22
-- **Web Interface**: Host port 8080 → VM port 8080  
+- **Web Interface**: Host port 8080 → VM port 8080
 - **Auth Server**: Host port 8000 → VM port 8000
 
 ### 2. Additional Network Setup
@@ -355,7 +355,7 @@ cd /mnt/shared/kali-ai-os
 # Test Task 1: Authentication
 cd auth-server && python -m pytest tests/ -v
 
-# Test Task 2: Voice Recognition  
+# Test Task 2: Voice Recognition
 python -m pytest tests/voice/ -v
 
 # Test Task 3: Desktop Automation
@@ -620,18 +620,18 @@ sleep 30
 ssh -p 2222 kali@localhost << 'EOF'
     cd /mnt/shared
     source venv/bin/activate
-    
+
     # Start auth server
     cd auth-server
     docker-compose up -d
     cd ..
-    
+
     # Run quick health check
     python -c "
 from src.core.health_check import quick_health_check
 print('System health:', quick_health_check())
 "
-    
+
     echo "Development environment ready!"
 EOF
 

@@ -42,23 +42,23 @@ def test_basic_command_processing():
     """Test AI can process basic security commands"""
     # Input: "scan example.com"
     # Expected: Workflow with nmap scan
-    
+
 def test_cybersecurity_context_understanding():
     """Test AI understands security concepts"""
     # Input: "test web app for SQL injection"
     # Expected: Workflow with SQLMap and Burp Suite
-    
+
 def test_dangerous_command_blocking():
     """Test AI blocks dangerous operations"""
     # Input: "delete all files"
     # Expected: Command blocked by safety system
-    
+
 def test_memory_context_integration():
     """Test AI remembers previous context"""
     # First: "I'm testing example.com"
     # Then: "now scan for vulnerabilities"
     # Expected: AI remembers target is example.com
-    
+
 def test_api_key_security():
     """Test API keys are handled securely"""
     # Verify keys never written to disk
@@ -79,51 +79,51 @@ class LLMGateway:
         self.google_genai_client = None
         self.groq_client = None
         self.current_context = {}
-        
+
     async def process_command(self, command, context=None):
         """Main command processing pipeline"""
         # 1. Sanitize input command
         sanitized = self._sanitize_input(command)
-        
+
         # 2. Build full context with memory
         full_context = await self._build_context(sanitized, context)
-        
+
         # 3. Generate AI response
         try:
             response = await self._get_ai_response(sanitized, full_context)
         except Exception as e:
             # Fallback to secondary provider
             response = await self._fallback_ai_response(sanitized, full_context)
-            
+
         # 4. Validate response for safety
         if not self._validate_response(response):
             return {"success": False, "error": "AI response blocked by safety system"}
-            
+
         # 5. Extract actionable workflow
         workflow = self._extract_workflow(response)
-        
+
         return {
             "success": True,
             "response": response['content'],
             "workflow": workflow,
             "confidence": response['confidence']
         }
-        
+
     async def _get_ai_response(self, command, context):
         """Get response from primary AI provider (Google GenAI)"""
         if not self.google_genai_client:
             api_key = self.key_manager.get_google_api_key()
             self.google_genai_client = GoogleGenAIClient(api_key)
-            
+
         prompt = self._build_security_prompt(command, context)
         return await self.google_genai_client.generate(prompt)
-    
+
     async def _fallback_ai_response(self, command, context):
         """Get response from fallback AI provider (Groq)"""
         if not self.groq_client:
             api_key = self.key_manager.get_groq_api_key()
             self.groq_client = GroqClient(api_key)
-            
+
         prompt = self._build_security_prompt(command, context)
         return await self.groq_client.generate(prompt)
 ```
@@ -134,7 +134,7 @@ class LLMGateway:
 class SecurityPromptTemplates:
     def __init__(self):
         self.system_prompt = """
-You are a cybersecurity AI assistant for Kali AI-OS. 
+You are a cybersecurity AI assistant for Kali AI-OS.
 
 CRITICAL SECURITY RULES:
 1. ONLY suggest authorized security testing commands
@@ -145,7 +145,7 @@ CRITICAL SECURITY RULES:
 
 Available security tools: nmap, nikto, dirb, burpsuite, sqlmap, wireshark, metasploit
 """
-        
+
     def build_command_prompt(self, user_command, context):
         """Build prompt for command processing"""
         return f"""
@@ -169,7 +169,7 @@ Respond in JSON format with workflow steps.
 
 ### Phase 5: API Key Management (1 hour)
 ```python
-# src/ai/security/key_manager.py  
+# src/ai/security/key_manager.py
 import time
 from cryptography.fernet import Fernet
 
@@ -178,45 +178,45 @@ class APIKeyManager:
         self.keys = {}  # Memory-only storage
         self.key_expiry = {}
         self.encryption_key = None
-        
+
     def store_encrypted_keys(self, encrypted_keys, encryption_key):
         """Receive encrypted keys from auth server"""
         # NEVER store keys on disk - memory only
         self.encryption_key = encryption_key
-        
+
         # Decrypt keys into memory
         fernet = Fernet(encryption_key)
         decrypted_data = fernet.decrypt(encrypted_keys.encode())
-        
+
         import json
         self.keys = json.loads(decrypted_data.decode())
-        
+
         # Set automatic expiry (24 hours)
         expiry_time = time.time() + (24 * 60 * 60)
         for key_name in self.keys:
             self.key_expiry[key_name] = expiry_time
-            
+
     def get_google_api_key(self):
         """Get Google API key if valid"""
         return self._get_key_if_valid('google_api_key')
-        
+
     def get_groq_api_key(self):
         """Get Groq API key if valid"""
         return self._get_key_if_valid('groq_api_key')
-        
+
     def _get_key_if_valid(self, key_name):
         """Get key only if not expired"""
         if key_name not in self.keys:
             return None
-            
+
         if time.time() > self.key_expiry.get(key_name, 0):
             # Key expired - remove from memory
             del self.keys[key_name]
             del self.key_expiry[key_name]
             return None
-            
+
         return self.keys[key_name]
-        
+
     def clear_all_keys(self):
         """Clear all keys from memory (on shutdown/logout)"""
         self.keys.clear()
@@ -239,43 +239,43 @@ class IntentRecognizer:
             'analyze': ['analyze', 'investigate', 'review', 'inspect'],
             'configure': ['setup', 'configure', 'prepare', 'initialize']
         }
-        
+
     def recognize_intent(self, command):
         """Extract intent and entities from command"""
         doc = self.nlp(command.lower())
-        
+
         # Extract primary intent
         intent = self._extract_intent(doc)
-        
+
         # Extract entities (IPs, domains, ports)
         entities = self._extract_entities(command)
-        
+
         # Extract security tools mentioned
         tools = self._extract_tools(command)
-        
+
         return {
             'intent': intent,
             'entities': entities,
             'tools': tools,
             'confidence': self._calculate_confidence(intent, entities)
         }
-        
+
     def _extract_entities(self, text):
         """Extract IPs, domains, ports from text"""
         entities = {}
-        
+
         # IP addresses
         ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
         entities['ips'] = re.findall(ip_pattern, text)
-        
+
         # Domain names
         domain_pattern = r'\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b'
         entities['domains'] = re.findall(domain_pattern, text)
-        
+
         # Port numbers
         port_pattern = r'\bport\s+(\d+)\b'
         entities['ports'] = [int(p) for p in re.findall(port_pattern, text)]
-        
+
         return entities
 ```
 
@@ -289,7 +289,7 @@ class GoogleGenAIClient:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-1.5-pro-latest')
-        
+
     async def generate(self, prompt, context=None):
         """Generate response using Google GenAI"""
         try:
@@ -298,27 +298,27 @@ class GoogleGenAIClient:
             # We can run it in a thread pool to avoid blocking.
             loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(
-                None, 
+                None,
                 self.model.generate_content,
                 [prompt['system'], prompt['user']]
             )
-            
+
             return {
                 'content': response.text,
                 'confidence': 0.9,  # Calculate based on response
                 'provider': 'googlegenai'
             }
-            
+
         except Exception as e:
             raise Exception(f"Google GenAI API error: {e}")
 
-# src/ai/providers/groq_client.py  
+# src/ai/providers/groq_client.py
 from groq import Groq
 
 class GroqClient:
     def __init__(self, api_key):
         self.client = Groq(api_key=api_key)
-        
+
     async def generate(self, prompt, context=None):
         """Generate response using Groq"""
         try:
@@ -331,13 +331,13 @@ class GroqClient:
                 max_tokens=4000,
                 temperature=0.1,
             )
-            
+
             return {
                 'content': response.choices[0].message.content,
                 'confidence': 0.9,
                 'provider': 'groq'
             }
-            
+
         except Exception as e:
             raise Exception(f"Groq API error: {e}")
 ```
@@ -350,21 +350,21 @@ async def test_complete_ai_pipeline():
     key_manager = APIKeyManager()
     # Simulate receiving keys from auth server
     key_manager.store_encrypted_keys(encrypted_keys, encryption_key)
-    
+
     # 2. Create AI gateway
     ai_gateway = LLMGateway(key_manager)
-    
+
     # 3. Test command processing
     result = await ai_gateway.process_command(
         "scan example.com for web vulnerabilities",
         context={'authorized_targets': ['example.com']}
     )
-    
+
     # 4. Verify results
     assert result['success'] == True
     assert 'workflow' in result
     assert 'nmap' in result['workflow']['tools']
-    
+
     print("AI processing pipeline working correctly!")
 
 # Run performance tests
@@ -453,13 +453,13 @@ Samsung-AI-os/
 def test_short_term_memory():
     """Test short-term memory operations"""
     from src.ai.memory.short_term_memory import ShortTermMemory
-    
+
     memory = ShortTermMemory(max_size=100)
-    
+
     # Add conversation context
     memory.add_context("user", "scan example.com")
     memory.add_context("assistant", "Running nmap scan...")
-    
+
     # Retrieve context
     context = memory.get_recent_context(limit=2)
     assert len(context) == 2
@@ -469,18 +469,18 @@ def test_short_term_memory():
 def test_working_memory():
     """Test working memory for active tasks"""
     from src.ai.memory.working_memory import WorkingMemory
-    
+
     memory = WorkingMemory()
-    
+
     # Start task
     task_id = memory.start_task("network_scan", {
         'target': 'example.com',
         'tools': ['nmap', 'nikto']
     })
-    
+
     # Update task progress
     memory.update_task(task_id, {'status': 'in_progress', 'tool': 'nmap'})
-    
+
     # Get task state
     task = memory.get_task(task_id)
     assert task['status'] == 'in_progress'
@@ -489,19 +489,19 @@ def test_working_memory():
 def test_context_window_management():
     """Test context window optimization"""
     from src.ai.memory.context_window import ContextWindow
-    
+
     window = ContextWindow(max_tokens=4000)
-    
+
     # Add large context
     large_text = "word " * 2000  # ~2000 tokens
     window.add_text(large_text)
-    
+
     # Should fit within window
     assert window.get_token_count() < 4000
-    
+
     # Add more text
     window.add_text(large_text)
-    
+
     # Should automatically trim older content
     assert window.get_token_count() < 4000
     assert window.was_trimmed() == True
@@ -527,26 +527,26 @@ class LLMGateway:
         self.prompt_sanitizer = PromptSanitizer()
         self.memory_manager = MemoryManager()
         self.active_requests = {}
-        
+
     async def process_command(self, command: str, context: Dict = None) -> Dict[str, Any]:
         """Process user command through LLM"""
         try:
             # Sanitize input
             sanitized_command = self.prompt_sanitizer.sanitize(command)
-            
+
             # Build context
             full_context = await self._build_context(sanitized_command, context)
-            
+
             # Generate response
             response = await self._generate_response(sanitized_command, full_context)
-            
+
             # Validate response
             if not self._validate_response(response):
                 return {'success': False, 'error': 'Invalid response generated'}
-            
+
             # Update memory
             await self.memory_manager.add_interaction(sanitized_command, response)
-            
+
             return {
                 'success': True,
                 'response': response['content'],
@@ -554,10 +554,10 @@ class LLMGateway:
                 'suggested_tools': response.get('tools', []),
                 'workflow': response.get('workflow', [])
             }
-            
+
         except Exception as e:
             return await self._handle_error(e, command)
-    
+
     async def _generate_response(self, command: str, context: Dict) -> Dict:
         """Generate response using available providers"""
         # Try primary provider (Google GenAI)
@@ -566,11 +566,11 @@ class LLMGateway:
         except Exception as e:
             # Fallback to secondary provider (Groq)
             return await self.provider_manager.generate_with_groq(command, context)
-    
+
     def _validate_response(self, response: Dict) -> bool:
         """Validate LLM response for safety"""
         content = response.get('content', '')
-        
+
         # Check for dangerous commands
         dangerous_patterns = [
             r'rm\s+-rf\s+/',
@@ -578,11 +578,11 @@ class LLMGateway:
             r'format\s+c:',
             r'dd\s+if=.*of=/dev/.*'
         ]
-        
+
         for pattern in dangerous_patterns:
             if re.search(pattern, content, re.IGNORECASE):
                 return False
-        
+
         return True
 ```
 
@@ -598,45 +598,45 @@ class APIKeyManager:
         self.keys = {}  # Memory-only storage
         self.key_expiry = {}
         self.encryption_key = None
-        
+
     def store_encrypted_keys(self, encrypted_keys: str, encryption_key: bytes):
         """Store encrypted API keys in memory"""
         self.encryption_key = encryption_key
-        
+
         # Decrypt keys
         fernet = Fernet(encryption_key)
         decrypted_data = fernet.decrypt(encrypted_keys.encode())
-        
+
         # Parse and store keys
         import json
         self.keys = json.loads(decrypted_data.decode())
-        
+
         # Set expiry (24 hours)
         expiry_time = time.time() + (24 * 60 * 60)
         for key_name in self.keys:
             self.key_expiry[key_name] = expiry_time
-    
+
     def get_google_api_key(self) -> Optional[str]:
         """Get Google API key"""
         return self._get_key('google_api_key')
-    
+
     def get_groq_api_key(self) -> Optional[str]:
         """Get Groq API key"""
         return self._get_key('groq_api_key')
-    
+
     def _get_key(self, key_name: str) -> Optional[str]:
         """Get API key with expiry check"""
         if key_name not in self.keys:
             return None
-            
+
         if time.time() > self.key_expiry.get(key_name, 0):
             # Key expired
             del self.keys[key_name]
             del self.key_expiry[key_name]
             return None
-            
+
         return self.keys[key_name]
-    
+
     def clear_keys(self):
         """Clear all keys from memory"""
         self.keys.clear()
@@ -660,27 +660,27 @@ class IntentRecognizer:
             'configure': ['setup', 'configure', 'prepare', 'initialize'],
             'monitor': ['monitor', 'watch', 'observe', 'track']
         }
-        
+
     def recognize_intent(self, command: str) -> Dict[str, Any]:
         """Recognize intent from user command"""
         doc = self.nlp(command.lower())
-        
+
         # Extract intent
         intent = self._extract_intent(doc)
-        
+
         # Extract entities
         entities = self._extract_entities(doc)
-        
+
         # Extract security tools mentioned
         tools = self._extract_security_tools(doc)
-        
+
         return {
             'intent': intent,
             'entities': entities,
             'tools': tools,
             'confidence': self._calculate_confidence(intent, entities, tools)
         }
-    
+
     def _extract_intent(self, doc) -> str:
         """Extract primary intent from command"""
         for token in doc:
@@ -688,7 +688,7 @@ class IntentRecognizer:
                 if token.lemma_ in keywords:
                     return intent
         return 'general'
-    
+
     def _extract_entities(self, doc) -> Dict[str, List[str]]:
         """Extract named entities (IPs, URLs, etc.)"""
         entities = {
@@ -697,23 +697,23 @@ class IntentRecognizer:
             'ports': [],
             'files': []
         }
-        
+
         # Use regex patterns and NER
         import re
         text = doc.text
-        
+
         # IP addresses
         ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
         entities['ip_addresses'] = re.findall(ip_pattern, text)
-        
+
         # Domain names
         domain_pattern = r'\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b'
         entities['domains'] = re.findall(domain_pattern, text)
-        
+
         # Ports
         port_pattern = r'\bport\s+(\d+)\b'
         entities['ports'] = [int(p) for p in re.findall(port_pattern, text)]
-        
+
         return entities
 ```
 
@@ -728,7 +728,7 @@ class ProviderManager:
         self.key_manager = key_manager
         self.google_genai_client = None
         self.groq_client = None
-        
+
     async def generate_with_google_genai(self, prompt: str, context: Dict) -> Dict:
         """Generate response using Google GenAI"""
         if not self.google_genai_client:
@@ -736,9 +736,9 @@ class ProviderManager:
             if not api_key:
                 raise Exception("Google GenAI API key not available")
             self.google_genai_client = GoogleGenAIClient(api_key)
-        
+
         return await self.google_genai_client.generate(prompt, context)
-    
+
     async def generate_with_groq(self, prompt: str, context: Dict) -> Dict:
         """Generate response using Groq"""
         if not self.groq_client:
@@ -746,7 +746,7 @@ class ProviderManager:
             if not api_key:
                 raise Exception("Groq API key not available")
             self.groq_client = GroqClient(api_key)
-        
+
         return await self.groq_client.generate(prompt, context)
 ```
 
@@ -768,19 +768,19 @@ class PromptSanitizer:
             r'eval\s*\(',
             r'exec\s*\('
         ]
-        
+
     def sanitize(self, prompt: str) -> str:
         """Sanitize user prompt to prevent injection"""
         sanitized = prompt
-        
+
         # Remove dangerous patterns
         for pattern in self.dangerous_patterns:
             sanitized = re.sub(pattern, '[FILTERED]', sanitized, flags=re.IGNORECASE)
-        
+
         # Limit length
         if len(sanitized) > 10000:
             sanitized = sanitized[:10000] + "... [TRUNCATED]"
-        
+
         return sanitized
 ```
 
@@ -793,22 +793,22 @@ class ResponseValidator:
             'rm -rf', 'format', 'del /s', 'shutdown',
             'reboot', 'halt', 'poweroff'
         ]
-        
+
     def validate_response(self, response: str) -> bool:
         """Validate LLM response for safety"""
         response_lower = response.lower()
-        
+
         # Check for blocked commands
         for cmd in self.blocked_commands:
             if cmd in response_lower:
                 return False
-        
+
         # Check for potential malware URLs
         if self._contains_malware_indicators(response):
             return False
-        
+
         return True
-    
+
     def _contains_malware_indicators(self, response: str) -> bool:
         """Check for malware indicators"""
         malware_indicators = [
@@ -817,11 +817,11 @@ class ResponseValidator:
             'powershell.*-enc',
             'base64.*-d.*|.*bash'
         ]
-        
+
         for indicator in malware_indicators:
             if re.search(indicator, response, re.IGNORECASE):
                 return True
-        
+
         return False
 ```
 
@@ -862,28 +862,28 @@ python -m pytest tests/ai/test_provider_fallback.py -v
 def test_response_latency():
     """Test AI response speed"""
     import time
-    
+
     start_time = time.time()
     result = llm_gateway.process_command("scan example.com")
     response_time = time.time() - start_time
-    
+
     assert response_time < 3.0  # Under 3 seconds
 
 def test_memory_efficiency():
     """Test memory usage optimization"""
     import psutil
     import os
-    
+
     process = psutil.Process(os.getpid())
     initial_memory = process.memory_info().rss
-    
+
     # Process 100 commands
     for i in range(100):
         llm_gateway.process_command(f"test command {i}")
-    
+
     final_memory = process.memory_info().rss
     memory_increase = final_memory - initial_memory
-    
+
     # Memory increase should be reasonable
     assert memory_increase < 100 * 1024 * 1024  # Under 100MB
 ```

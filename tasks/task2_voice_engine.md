@@ -42,19 +42,19 @@ mv vosk-model-en-us-0.22 vosk-model-en-us
 def test_basic_speech_recognition():
     """Test basic speech-to-text works"""
     # Test with clean audio sample
-    
+
 def test_cybersecurity_term_recognition():
     """Test recognition of security terms"""
     # Test: "nmap", "burpsuite", "metasploit", "wireshark"
-    
+
 def test_wake_word_detection():
     """Test wake word detection accuracy"""
     # Test: "hey kali", "kali ai", "security ai"
-    
+
 def test_noise_filtering():
     """Test noise reduction improves accuracy"""
     # Test with noisy vs clean audio
-    
+
 def test_parameter_extraction():
     """Test extracting IPs, URLs, ports from voice"""
     # Test: "scan 192.168.1.1 for open ports"
@@ -71,11 +71,11 @@ class VoskSTTEngine:
     def __init__(self, model_path):
         self.model = vosk.Model(model_path)
         self.rec = vosk.KaldiRecognizer(self.model, 16000)
-        
+
     def transcribe_real_time(self, audio_stream):
         # Implement real-time transcription
         # Return: {"text": "scan example.com", "confidence": 0.95}
-        
+
     def transcribe_file(self, audio_file):
         # Implement file-based transcription for testing
         # Return: {"text": "...", "confidence": 0.85, "success": True}
@@ -90,21 +90,21 @@ class CybersecurityVocabulary:
             # Common voice recognition errors -> correct terms
             "map": "nmap",
             "burp sweet": "burpsuite",
-            "wire shark": "wireshark", 
+            "wire shark": "wireshark",
             "metal split": "metasploit",
             "nick to": "nikto"
         }
-        
+
     def correct_terms(self, text):
         # Fix common voice recognition errors
         # "map scan example.com" -> "nmap scan example.com"
-        
+
     def extract_parameters(self, text):
         # Extract IPs, domains, ports from voice command
         # "scan 192.168.1.1 port 80" -> {"ips": ["192.168.1.1"], "ports": [80]}
 ```
 
-### Phase 5: Wake Word Detection (1 hour)  
+### Phase 5: Wake Word Detection (1 hour)
 ```python
 # src/voice/recognition/wake_word_detector.py
 import pvporcupine
@@ -113,11 +113,11 @@ class WakeWordDetector:
     def __init__(self, wake_words=["hey kali", "kali ai"]):
         # Initialize Picovoice Porcupine for wake word detection
         self.wake_words = wake_words
-        
+
     def detect_wake_word(self, audio_chunk):
         # Return True if wake word detected
         # Enable continuous listening mode
-        
+
     def continuous_listen(self):
         # Background thread listening for wake words
         # Activate voice recognition when detected
@@ -125,7 +125,7 @@ class WakeWordDetector:
 
 ### Phase 6: Noise Filtering (45 minutes)
 ```python
-# src/voice/recognition/noise_filter.py  
+# src/voice/recognition/noise_filter.py
 import noisereduce as nr
 import librosa
 
@@ -133,7 +133,7 @@ class NoiseFilter:
     def reduce_noise(self, audio_data):
         # Apply noise reduction algorithms
         # Improve speech clarity for better recognition
-        
+
     def enhance_speech(self, audio_data):
         # Enhance speech frequencies
         # Suppress background noise
@@ -148,11 +148,11 @@ class AudioProcessor:
         self.wake_detector = WakeWordDetector()
         self.vocab = CybersecurityVocabulary()
         self.noise_filter = NoiseFilter()
-        
+
     async def process_voice_command(self, audio_input):
         # Complete pipeline:
         # 1. Noise filtering
-        # 2. Speech recognition  
+        # 2. Speech recognition
         # 3. Vocabulary correction
         # 4. Parameter extraction
         # Return processed command ready for AI layer
@@ -174,7 +174,7 @@ print(f'Recognition result: {result}')
 
 # Optimize for:
 # - <300ms processing latency
-# - >90% accuracy on security terms  
+# - >90% accuracy on security terms
 # - >95% wake word detection accuracy
 ```
 
@@ -244,17 +244,17 @@ Samsung-AI-os/
 def test_microphone_calibration():
     """Test microphone input levels and quality"""
     from src.voice.config.audio_config import AudioConfig
-    
+
     config = AudioConfig()
-    
+
     # Test microphone detection
     mics = config.detect_microphones()
     assert len(mics) > 0
-    
+
     # Test audio quality
     sample = config.record_test_sample(duration=2.0)
     quality_score = config.analyze_audio_quality(sample)
-    
+
     assert quality_score['snr'] > 10  # Signal-to-noise ratio
     assert quality_score['volume'] > 0.1  # Adequate volume
     assert quality_score['clipping'] < 0.05  # Minimal clipping
@@ -262,15 +262,15 @@ def test_microphone_calibration():
 def test_latency_requirements():
     """Test voice processing latency meets requirements"""
     import time
-    
+
     start_time = time.time()
-    
+
     # Simulate full voice processing pipeline
     result = stt_engine.transcribe_real_time("test command")
-    
+
     end_time = time.time()
     latency = end_time - start_time
-    
+
     # Should process voice in under 500ms
     assert latency < 0.5
 ```
@@ -294,12 +294,12 @@ class VoskSTTEngine:
         self.sample_rate = sample_rate
         self.model = vosk.Model(model_path)
         self.rec = vosk.KaldiRecognizer(self.model, sample_rate)
-        
+
     def transcribe_file(self, audio_file: str) -> Dict[str, Any]:
         """Transcribe audio file to text"""
         # Implementation here
         pass
-        
+
     def transcribe_real_time(self, audio_stream) -> Dict[str, Any]:
         """Real-time transcription from audio stream"""
         # Implementation here
@@ -314,25 +314,25 @@ class CybersecurityVocabulary:
         self.security_tools = {
             # Common misheard -> correct
             "map": "nmap",
-            "burp sweet": "burpsuite", 
+            "burp sweet": "burpsuite",
             "burp suit": "burpsuite",
             "wire shark": "wireshark",
             "metal split": "metasploit",
             "nick to": "nikto"
         }
-        
+
         self.security_terms = {
             "recon": "reconnaissance",
-            "vuln": "vulnerability", 
+            "vuln": "vulnerability",
             "pen test": "penetration test",
             "priv esc": "privilege escalation"
         }
-        
+
     def correct_terms(self, text: str) -> str:
         """Auto-correct common voice recognition errors"""
         # Implementation here
         pass
-        
+
     def extract_parameters(self, text: str) -> Dict[str, list]:
         """Extract IPs, URLs, ports, etc. from voice command"""
         # Implementation here
@@ -352,7 +352,7 @@ class WakeWordDetector:
             keywords=wake_words,
             access_key="YOUR_PICOVOICE_ACCESS_KEY"
         )
-        
+
     def detect_wake_word(self, audio_chunk: bytes) -> bool:
         """Detect wake word in audio chunk"""
         # Implementation here
@@ -371,12 +371,12 @@ class NoiseFilter:
             'stationary': True,
             'prop_decrease': 0.8
         }
-        
+
     def reduce_noise(self, audio_data: np.ndarray) -> np.ndarray:
         """Apply noise reduction to audio"""
         # Implementation here
         pass
-        
+
     def enhance_speech(self, audio_data: np.ndarray) -> np.ndarray:
         """Enhance speech clarity"""
         # Implementation here
@@ -446,11 +446,11 @@ python -m pytest tests/voice/test_audio_quality.py -v
 def test_recognition_speed():
     """Test voice recognition speed meets requirements"""
     import time
-    
+
     start_time = time.time()
     result = voice_engine.process_command("scan example.com")
     end_time = time.time()
-    
+
     # Should process in under 300ms
     assert (end_time - start_time) < 0.3
 
@@ -458,10 +458,10 @@ def test_accuracy_with_noise():
     """Test recognition accuracy in noisy environments"""
     # Test with different noise levels
     noise_levels = [0.1, 0.3, 0.5]  # SNR ratios
-    
+
     for noise_level in noise_levels:
         accuracy = test_recognition_with_noise(noise_level)
-        
+
         if noise_level <= 0.1:
             assert accuracy > 0.95  # 95% accuracy in quiet
         elif noise_level <= 0.3:
