@@ -84,7 +84,7 @@ docker build -t kali-auth-test .
 - **isort**: Import sorting (black profile)
 - **mypy**: Type checking (permissive for now)
 
-### Security Tools  
+### Security Tools
 - **Bandit**: Security linter for Python
 - **Safety**: Dependency vulnerability scanner
 - **Pre-commit**: Additional security pattern checks
@@ -111,7 +111,7 @@ Structured template for reporting bugs with:
 - Reproduction steps
 - Expected vs actual behavior
 
-### ✨ Feature Request (`feature_request.yml`)  
+### ✨ Feature Request (`feature_request.yml`)
 Template for suggesting new features with:
 - Problem description
 - Proposed solution
