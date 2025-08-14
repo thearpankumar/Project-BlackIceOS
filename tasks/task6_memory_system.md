@@ -1215,7 +1215,7 @@ Samsung-AI-os/
 ## Technology Stack
 - **Database**: SQLite 3.40+, SQLAlchemy 2.0.23
 - **Vector Search**: ChromaDB 0.4.15, sentence-transformers
-- **Embeddings**: all-MiniLM-L6-v2, OpenAI embeddings
+- **Embeddings**: all-MiniLM-L6-v2, Google GenAI embeddings
 - **Storage**: File system management, USB detection
 - **Serialization**: JSON, pickle, msgpack
 
