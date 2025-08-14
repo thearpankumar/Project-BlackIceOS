@@ -11,7 +11,7 @@ class TestUserRegistration:
         """Test successful user registration"""
         response = client.post("/auth/register", json=sample_user_data)
 
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["username"] == sample_user_data["username"]
         assert data["email"] == sample_user_data["email"]

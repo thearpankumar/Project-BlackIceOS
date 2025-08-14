@@ -119,7 +119,7 @@ We use **GitFlow** with semantic branch names:
 git checkout -b feat/user-registration-endpoint
 git checkout -b feat/add-oauth-integration
 
-# Bug fixes  
+# Bug fixes
 git checkout -b fix/jwt-token-expiration
 git checkout -b fix/database-connection-timeout
 
@@ -218,13 +218,13 @@ class UserResponse(BaseModel):
 async def create_user(user_data: UserCreate) -> Dict[str, Any]:
     """
     Create a new user with validation.
-    
+
     Args:
         user_data: User creation data
-        
+
     Returns:
         Dictionary containing user information and success status
-        
+
     Raises:
         HTTPException: If user already exists or validation fails
     """
@@ -269,17 +269,17 @@ from app.main import app
 
 class TestUserRegistration:
     """Test user registration functionality."""
-    
+
     def test_user_registration_success(self, client):
         """Test successful user registration."""
         response = client.post("/auth/register", json={
             "username": "testuser",
-            "email": "test@example.com", 
+            "email": "test@example.com",
             "password": "SecurePass123!"
         })
         assert response.status_code == 201
         assert "id" in response.json()
-    
+
     def test_user_registration_duplicate_email(self, client):
         """Test registration fails with duplicate email."""
         # First registration
@@ -288,10 +288,10 @@ class TestUserRegistration:
             "email": "test@example.com",
             "password": "SecurePass123!"
         })
-        
+
         # Second registration with same email should fail
         response = client.post("/auth/register", json={
-            "username": "user2", 
+            "username": "user2",
             "email": "test@example.com",
             "password": "AnotherPass123!"
         })
@@ -302,14 +302,14 @@ class TestUserRegistration:
 ### **Test Categories**
 
 - **Unit Tests** (`@pytest.mark.unit`): Fast tests for individual functions
-- **Integration Tests** (`@pytest.mark.integration`): Tests with database/external services  
+- **Integration Tests** (`@pytest.mark.integration`): Tests with database/external services
 - **Security Tests** (`@pytest.mark.security`): Tests for authentication and authorization
 - **Slow Tests** (`@pytest.mark.slow`): Long-running tests (skip during development)
 
 ```bash
 # Run specific test categories
 uv run pytest -m unit                    # Unit tests only
-uv run pytest -m "not slow"             # Skip slow tests  
+uv run pytest -m "not slow"             # Skip slow tests
 uv run pytest -k "registration"         # Tests matching pattern
 uv run pytest tests/test_auth.py -v     # Specific file
 ```
@@ -341,7 +341,7 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./test.db")
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
-    
+
     class Config:
         env_file = ".env"
 
@@ -360,7 +360,7 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=8)
-    
+
     @validator('password')
     def validate_password(cls, v):
         if not re.search(r"[A-Z]", v):
@@ -472,7 +472,7 @@ users = session.query(User).all()
 for user in users:
     print(user.api_keys)  # Separate query for each user
 
-# ✅ Eager loading  
+# ✅ Eager loading
 users = session.query(User).options(joinedload(User.api_keys)).all()
 for user in users:
     print(user.api_keys)  # Single query with joins

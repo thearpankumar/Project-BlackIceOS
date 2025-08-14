@@ -43,46 +43,51 @@ async def lifespan(app: FastAPI):
     # Startup tasks
     logger.info("Starting Kali AI-OS Authentication Server...")
 
-    try:
-        # Initialize database (create tables if needed)
-        if not initialize_database():
-            logger.error("Database initialization failed")
-            raise Exception("Cannot start server - database initialization failed")
+    # Skip database initialization in test environment
+    if settings.ENVIRONMENT != "test":
+        try:
+            # Initialize database (create tables if needed)
+            if not initialize_database():
+                logger.error("Database initialization failed")
+                raise Exception("Cannot start server - database initialization failed")
 
-        # Perform initial health check
-        if not check_database_health():
-            logger.error("Database health check failed")
-            raise Exception("Cannot start server - database unavailable")
+            # Perform initial health check
+            if not check_database_health():
+                logger.error("Database health check failed")
+                raise Exception("Cannot start server - database unavailable")
 
-        # Clean up expired sessions on startup
-        expired_count = cleanup_expired_sessions()
-        if expired_count > 0:
-            logger.info(f"Cleaned up {expired_count} expired sessions on startup")
+            # Clean up expired sessions on startup
+            expired_count = cleanup_expired_sessions()
+            if expired_count > 0:
+                logger.info(f"Cleaned up {expired_count} expired sessions on startup")
 
-        logger.info("Authentication server started successfully")
-        logger.info(
-            f"Server configuration: DEBUG={settings.DEBUG}, CORS={settings.ALLOWED_ORIGINS}"
-        )
+            logger.info("Authentication server started successfully")
+            logger.info(
+                f"Server configuration: DEBUG={settings.DEBUG}, CORS={settings.ALLOWED_ORIGINS}"
+            )
 
-    except Exception as e:
-        logger.error(f"Startup failed: {e}")
-        raise
+        except Exception as e:
+            logger.error(f"Startup failed: {e}")
+            raise
+    else:
+        logger.info("Running in TEST environment, skipping database initialization")
 
     yield
 
     # Shutdown tasks
     logger.info("Shutting down authentication server...")
 
-    try:
-        # Clean up expired sessions before shutdown
-        expired_count = cleanup_expired_sessions()
-        if expired_count > 0:
-            logger.info(f"Cleaned up {expired_count} expired sessions on shutdown")
+    if settings.ENVIRONMENT != "test":
+        try:
+            # Clean up expired sessions before shutdown
+            expired_count = cleanup_expired_sessions()
+            if expired_count > 0:
+                logger.info(f"Cleaned up {expired_count} expired sessions on shutdown")
 
-        logger.info("Authentication server shutdown completed")
+            logger.info("Authentication server shutdown completed")
 
-    except Exception as e:
-        logger.error(f"Shutdown error: {e}")
+        except Exception as e:
+            logger.error(f"Shutdown error: {e}")
 
 
 # Create FastAPI application
@@ -145,6 +150,21 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "detail": exc.errors(),
             "error_type": "validation_error",
+            "timestamp": datetime.utcnow().isoformat(),
+        },
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_exception_handler(request: Request, exc: ValueError):
+    """Handle ValueError exceptions"""
+    logger.error(f"ValueError on {request.url.path}: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "detail": str(exc),
+            "error_type": "value_error",
             "timestamp": datetime.utcnow().isoformat(),
         },
     )

@@ -73,7 +73,7 @@ repos:
           - -c
           - |
             if [[ $(git diff --cached --name-only | grep -E '^auth-server/.*\.py$') ]]; then
-              cd auth-server && uv run pytest tests/ --tb=short -q || exit 1
+              cd auth-server && ENVIRONMENT=test uv run pytest tests/ --tb=short -q || exit 1
             fi
         pass_filenames: false
         always_run: false
