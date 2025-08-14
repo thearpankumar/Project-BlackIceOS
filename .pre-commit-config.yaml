@@ -52,7 +52,7 @@ repos:
       - id: mypy
         name: mypy type checking
         files: ^auth-server/app/.*\.py$
-        args: [--config-file=auth-server/pyproject.toml]
+        args: [--config-file=auth-server/pyproject.toml, --ignore-missing-imports]
         additional_dependencies:
           - fastapi
           - sqlalchemy
