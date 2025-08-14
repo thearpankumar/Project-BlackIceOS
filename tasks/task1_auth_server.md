@@ -3,7 +3,7 @@
 ## What This Task Is About
 This task builds the secure foundation for the entire Kali AI-OS by creating a FastAPI authentication server that:
 - **Manages user accounts** and secure authentication
-- **Stores encrypted API keys** for OpenAI/Anthropic services
+- **Stores encrypted API keys** for Google GenAI/Groq services
 - **Provides secure API key delivery** to the Kali AI-OS (never stores keys on disk in VM)
 - **Runs on the host system** using Docker Compose for easy management
 - **Ensures zero-trust security** where VM never permanently stores sensitive data
@@ -532,7 +532,7 @@ Samsung-AI-os/
    - Email verification (optional)
 
 2. **API Key Management**
-   - Encrypted storage of OpenAI/Anthropic keys
+   - Encrypted storage of Google GenAI/Groq keys
    - Memory-only key delivery to Kali AI-OS
    - Key rotation capability
 
@@ -693,8 +693,8 @@ JWT_EXPIRATION_HOURS=24
 ENCRYPTION_KEY=your_encryption_key_32_bytes_base64_encoded
 
 # API Keys (Users will input these)
-# OPENAI_API_KEY=sk-your-openai-key
-# ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+# GOOGLE_API_KEY=your-google-api-key
+# GROQ_API_KEY=your-groq-api-key
 
 # Server Configuration
 HOST=0.0.0.0
@@ -862,7 +862,7 @@ def test_foreign_key_relationships(db_session: Session):
     # Create API key for user
     api_key = APIKey(
         user_id=user.id,
-        key_name="openai",
+        key_name="googlegenai",
         encrypted_key="encrypted_key_data"
     )
     
@@ -872,7 +872,7 @@ def test_foreign_key_relationships(db_session: Session):
     # Test relationship
     retrieved_user = db_session.query(User).filter(User.id == user.id).first()
     assert len(retrieved_user.api_keys) == 1
-    assert retrieved_user.api_keys[0].key_name == "openai"
+    assert retrieved_user.api_keys[0].key_name == "googlegenai"
     
     # Cleanup
     db_session.delete(user)  # Should cascade delete api_key

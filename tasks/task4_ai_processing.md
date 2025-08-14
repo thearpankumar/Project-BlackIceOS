@@ -2,7 +2,7 @@
 
 ## What This Task Is About
 This task creates the "brain" of Kali AI-OS - the intelligent system that understands user commands and orchestrates security operations:
-- **LLM Integration** - Connects to OpenAI GPT-4 and Anthropic Claude for natural language understanding
+- **LLM Integration** - Connects to Google GenAI and Groq for natural language understanding. It uses web search to access information up to 2025 to ensure responses are current.
 - **Command Intelligence** - Converts "scan example.com for vulnerabilities" into specific tool workflows
 - **Memory Management** - Maintains context across conversations and remembers user preferences
 - **Security-First AI** - Validates all AI responses to prevent dangerous operations
@@ -19,7 +19,7 @@ This task creates the "brain" of Kali AI-OS - the intelligent system that unders
 ### Phase 1: Setup AI Environment (45 minutes)
 ```bash
 # 1. Install AI processing dependencies
-pip install openai anthropic
+pip install google-generativeai groq
 pip install spacy nltk sentence-transformers
 pip install redis diskcache  # For caching
 pip install aiohttp asyncio-throttle  # For async processing
@@ -31,7 +31,7 @@ spacy.cli.download('en_core_web_sm')
 "
 
 # 3. Setup environment variables (will be provided by auth server)
-# OPENAI_API_KEY and ANTHROPIC_API_KEY will come from auth server
+# GOOGLE_API_KEY and GROQ_API_KEY will come from auth server
 # Never store these in code or config files
 ```
 
@@ -70,14 +70,14 @@ def test_api_key_security():
 # src/ai/core/llm_gateway.py
 import asyncio
 from src.ai.security.key_manager import APIKeyManager
-from src.ai.providers.openai_client import OpenAIClient
-from src.ai.providers.anthropic_client import AnthropicClient
+from src.ai.providers.google_genai_client import GoogleGenAIClient
+from src.ai.providers.groq_client import GroqClient
 
 class LLMGateway:
     def __init__(self, key_manager):
         self.key_manager = key_manager
-        self.openai_client = None
-        self.anthropic_client = None
+        self.google_genai_client = None
+        self.groq_client = None
         self.current_context = {}
         
     async def process_command(self, command, context=None):
@@ -110,13 +110,22 @@ class LLMGateway:
         }
         
     async def _get_ai_response(self, command, context):
-        """Get response from primary AI provider (OpenAI)"""
-        if not self.openai_client:
-            api_key = self.key_manager.get_openai_key()
-            self.openai_client = OpenAIClient(api_key)
+        """Get response from primary AI provider (Google GenAI)"""
+        if not self.google_genai_client:
+            api_key = self.key_manager.get_google_api_key()
+            self.google_genai_client = GoogleGenAIClient(api_key)
             
         prompt = self._build_security_prompt(command, context)
-        return await self.openai_client.generate(prompt)
+        return await self.google_genai_client.generate(prompt)
+    
+    async def _fallback_ai_response(self, command, context):
+        """Get response from fallback AI provider (Groq)"""
+        if not self.groq_client:
+            api_key = self.key_manager.get_groq_api_key()
+            self.groq_client = GroqClient(api_key)
+            
+        prompt = self._build_security_prompt(command, context)
+        return await self.groq_client.generate(prompt)
 ```
 
 ### Phase 4: Security-Focused Prompt Engineering (1 hour)
@@ -187,13 +196,13 @@ class APIKeyManager:
         for key_name in self.keys:
             self.key_expiry[key_name] = expiry_time
             
-    def get_openai_key(self):
-        """Get OpenAI API key if valid"""
-        return self._get_key_if_valid('openai_key')
+    def get_google_api_key(self):
+        """Get Google API key if valid"""
+        return self._get_key_if_valid('google_api_key')
         
-    def get_anthropic_key(self):
-        """Get Anthropic API key if valid"""
-        return self._get_key_if_valid('anthropic_key')
+    def get_groq_api_key(self):
+        """Get Groq API key if valid"""
+        return self._get_key_if_valid('groq_api_key')
         
     def _get_key_if_valid(self, key_name):
         """Get key only if not expired"""
@@ -272,62 +281,65 @@ class IntentRecognizer:
 
 ### Phase 7: Provider Integration (1 hour)
 ```python
-# src/ai/providers/openai_client.py
-import openai
+# src/ai/providers/google_genai_client.py
+import google.generativeai as genai
 import asyncio
 
-class OpenAIClient:
+class GoogleGenAIClient:
     def __init__(self, api_key):
-        self.client = openai.AsyncOpenAI(api_key=api_key)
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-1.5-pro-latest')
         
     async def generate(self, prompt, context=None):
-        """Generate response using OpenAI GPT-4"""
+        """Generate response using Google GenAI"""
         try:
-            response = await self.client.chat.completions.create(
-                model="gpt-4-turbo-preview",
+            # In a real async environment, you'd use an async library
+            # but the google-generativeai library is currently synchronous.
+            # We can run it in a thread pool to avoid blocking.
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(
+                None, 
+                self.model.generate_content,
+                [prompt['system'], prompt['user']]
+            )
+            
+            return {
+                'content': response.text,
+                'confidence': 0.9,  # Calculate based on response
+                'provider': 'googlegenai'
+            }
+            
+        except Exception as e:
+            raise Exception(f"Google GenAI API error: {e}")
+
+# src/ai/providers/groq_client.py  
+from groq import Groq
+
+class GroqClient:
+    def __init__(self, api_key):
+        self.client = Groq(api_key=api_key)
+        
+    async def generate(self, prompt, context=None):
+        """Generate response using Groq"""
+        try:
+            response = self.client.chat.completions.create(
+                model="llama3-70b-8192",
                 messages=[
                     {"role": "system", "content": prompt['system']},
                     {"role": "user", "content": prompt['user']}
                 ],
                 max_tokens=4000,
-                temperature=0.1  # Low temperature for consistent security responses
+                temperature=0.1,
             )
             
             return {
                 'content': response.choices[0].message.content,
-                'confidence': 0.9,  # Calculate based on response
-                'provider': 'openai'
-            }
-            
-        except Exception as e:
-            raise Exception(f"OpenAI API error: {e}")
-
-# src/ai/providers/anthropic_client.py  
-import anthropic
-
-class AnthropicClient:
-    def __init__(self, api_key):
-        self.client = anthropic.AsyncAnthropic(api_key=api_key)
-        
-    async def generate(self, prompt, context=None):
-        """Generate response using Anthropic Claude"""
-        try:
-            response = await self.client.messages.create(
-                model="claude-3-sonnet-20240229",
-                max_tokens=4000,
-                temperature=0.1,
-                system=prompt['system'],
-                messages=[{"role": "user", "content": prompt['user']}]
-            )
-            
-            return {
-                'content': response.content[0].text,
                 'confidence': 0.9,
-                'provider': 'anthropic'
+                'provider': 'groq'
             }
             
         except Exception as e:
-            raise Exception(f"Anthropic API error: {e}")
+            raise Exception(f"Groq API error: {e}")
 ```
 
 ### Phase 8: Integration & Testing (1 hour)
@@ -382,8 +394,8 @@ Samsung-AI-os/
 │   │   │   │   └── session_handler.py
 │   │   │   ├── providers/
 │   │   │   │   ├── __init__.py
-│   │   │   │   ├── openai_client.py
-│   │   │   │   ├── anthropic_client.py
+│   │   │   │   ├── google_genai_client.py
+│   │   │   │   ├── groq_client.py
 │   │   │   │   ├── provider_manager.py
 │   │   │   │   └── fallback_handler.py
 │   │   │   ├── processing/
@@ -428,7 +440,7 @@ Samsung-AI-os/
 ```
 
 ## Technology Stack
-- **LLM APIs**: OpenAI GPT-4 1.12.0, Anthropic Claude 0.8.1
+- **LLM APIs**: Google GenAI (Gemini), Groq (Llama 3)
 - **Memory Management**: Redis 5.0.1, SQLite for persistence
 - **Request Handling**: aiohttp 3.9.0, asyncio
 - **Security**: cryptography 41.0.7, JWT validation
@@ -548,12 +560,12 @@ class LLMGateway:
     
     async def _generate_response(self, command: str, context: Dict) -> Dict:
         """Generate response using available providers"""
-        # Try primary provider (OpenAI)
+        # Try primary provider (Google GenAI)
         try:
-            return await self.provider_manager.generate_with_openai(command, context)
+            return await self.provider_manager.generate_with_google_genai(command, context)
         except Exception as e:
-            # Fallback to secondary provider (Anthropic)
-            return await self.provider_manager.generate_with_anthropic(command, context)
+            # Fallback to secondary provider (Groq)
+            return await self.provider_manager.generate_with_groq(command, context)
     
     def _validate_response(self, response: Dict) -> bool:
         """Validate LLM response for safety"""
@@ -604,13 +616,13 @@ class APIKeyManager:
         for key_name in self.keys:
             self.key_expiry[key_name] = expiry_time
     
-    def get_openai_key(self) -> Optional[str]:
-        """Get OpenAI API key"""
-        return self._get_key('openai_key')
+    def get_google_api_key(self) -> Optional[str]:
+        """Get Google API key"""
+        return self._get_key('google_api_key')
     
-    def get_anthropic_key(self) -> Optional[str]:
-        """Get Anthropic API key"""
-        return self._get_key('anthropic_key')
+    def get_groq_api_key(self) -> Optional[str]:
+        """Get Groq API key"""
+        return self._get_key('groq_api_key')
     
     def _get_key(self, key_name: str) -> Optional[str]:
         """Get API key with expiry check"""
@@ -708,34 +720,34 @@ class IntentRecognizer:
 #### 4. Provider Manager
 ```python
 # src/ai/providers/provider_manager.py
-from src.ai.providers.openai_client import OpenAIClient
-from src.ai.providers.anthropic_client import AnthropicClient
+from src.ai.providers.google_genai_client import GoogleGenAIClient
+from src.ai.providers.groq_client import GroqClient
 
 class ProviderManager:
     def __init__(self, key_manager):
         self.key_manager = key_manager
-        self.openai_client = None
-        self.anthropic_client = None
+        self.google_genai_client = None
+        self.groq_client = None
         
-    async def generate_with_openai(self, prompt: str, context: Dict) -> Dict:
-        """Generate response using OpenAI"""
-        if not self.openai_client:
-            api_key = self.key_manager.get_openai_key()
+    async def generate_with_google_genai(self, prompt: str, context: Dict) -> Dict:
+        """Generate response using Google GenAI"""
+        if not self.google_genai_client:
+            api_key = self.key_manager.get_google_api_key()
             if not api_key:
-                raise Exception("OpenAI API key not available")
-            self.openai_client = OpenAIClient(api_key)
+                raise Exception("Google GenAI API key not available")
+            self.google_genai_client = GoogleGenAIClient(api_key)
         
-        return await self.openai_client.generate(prompt, context)
+        return await self.google_genai_client.generate(prompt, context)
     
-    async def generate_with_anthropic(self, prompt: str, context: Dict) -> Dict:
-        """Generate response using Anthropic"""
-        if not self.anthropic_client:
-            api_key = self.key_manager.get_anthropic_key()
+    async def generate_with_groq(self, prompt: str, context: Dict) -> Dict:
+        """Generate response using Groq"""
+        if not self.groq_client:
+            api_key = self.key_manager.get_groq_api_key()
             if not api_key:
-                raise Exception("Anthropic API key not available")
-            self.anthropic_client = AnthropicClient(api_key)
+                raise Exception("Groq API key not available")
+            self.groq_client = GroqClient(api_key)
         
-        return await self.anthropic_client.generate(prompt, context)
+        return await self.groq_client.generate(prompt, context)
 ```
 
 ### Security Features
