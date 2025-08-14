@@ -219,7 +219,7 @@ jobs:
     - name: Test Docker image
       run: |
         # Test that the image can be built and basic imports work
-        docker run --rm kali-auth-server:test python -c "from app.main import app; print('✅ App imports successfully')"
+        docker run --rm kali-auth-server:test uv run python -c "from app.main import app; print('✅ App imports successfully')"
 
   integration-test:
     name: Integration Tests
