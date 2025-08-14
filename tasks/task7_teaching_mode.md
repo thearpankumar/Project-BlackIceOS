@@ -21,6 +21,10 @@ This task creates the "training system" for Kali AI-OS - allowing users to teach
 # 1. Install action recording dependencies (in VM)
 sudo apt update
 sudo apt install -y xdotool scrot python3-tk
+# Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --all-extras
+
 pip install pynput mss opencv-python pillow
 pip install scikit-learn pandas numpy
 
@@ -1498,6 +1502,10 @@ python -m pytest tests/teaching/test_real_app_learning.py -v
 ### Setup Commands
 ```bash
 # 1. Install teaching dependencies
+# Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --all-extras
+
 pip install pynput mss opencv-python scikit-learn
 
 # 2. Configure permissions for input monitoring

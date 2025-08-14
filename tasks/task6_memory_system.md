@@ -21,8 +21,13 @@ This task creates the "brain" of Kali AI-OS - a sophisticated memory system that
 # 1. Install memory system dependencies (in VM)
 sudo apt update
 sudo apt install -y sqlite3 libsqlite3-dev
-pip install chromadb sentence-transformers sqlalchemy
-pip install faiss-cpu numpy scikit-learn
+
+# 2. Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv add chromadb sentence-transformers sqlalchemy
+uv add faiss-cpu numpy scikit-learn
+uv add pytest pytest-asyncio --dev
+uv sync --all-extras
 
 # 2. Create memory directory structure
 mkdir -p src/memory/{core,persistence,retrieval,learning,export,config}

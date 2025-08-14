@@ -27,7 +27,13 @@ sudo apt update
 sudo apt install -y masscan zap nuclei subfinder httpx
 sudo apt install -y amass sublist3r dirsearch wfuzz
 
-# 3. Install Python tool integration libraries
+# 3. Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv add subprocess32 psutil xmltodict
+uv add pytest pytest-mock pytest-timeout --dev
+uv sync --all-extras
+
+# 4. Install Python tool integration libraries
 pip install subprocess32 pexpect
 pip install beautifulsoup4 lxml requests
 pip install selenium webdriver-manager

@@ -18,14 +18,17 @@ This task creates the "brain" of Kali AI-OS - the intelligent system that unders
 
 ### Phase 1: Setup AI Environment (45 minutes)
 ```bash
-# 1. Install AI processing dependencies
-pip install google-generativeai groq
-pip install spacy nltk sentence-transformers
-pip install redis diskcache  # For caching
-pip install aiohttp asyncio-throttle  # For async processing
+# 1. Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv add google-generativeai groq
+uv add spacy nltk sentence-transformers
+uv add redis diskcache  # For caching
+uv add aiohttp asyncio-throttle  # For async processing
+uv add pytest pytest-asyncio --dev
+uv sync --all-extras
 
 # 2. Download language models
-python -c "
+uv run python -c "
 import spacy
 spacy.cli.download('en_core_web_sm')
 "

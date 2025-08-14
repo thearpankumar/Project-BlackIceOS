@@ -24,6 +24,12 @@ sudo apt install -y xvfb x11vnc xdotool wmctrl
 sudo apt install -y python3-tk python3-pil python3-pil.imagetk
 sudo apt install -y openbox feh  # Lightweight window manager
 
+# 2. Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv add opencv-python pyautogui pillow
+uv add pytest pytest-mock --dev
+uv sync --all-extras
+
 # 2. Create AI desktop service
 sudo tee /etc/systemd/system/ai-desktop.service << 'EOF'
 [Unit]
