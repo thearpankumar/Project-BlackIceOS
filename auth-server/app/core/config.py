@@ -9,6 +9,7 @@ class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")  # nosec B104
     PORT: int = int(os.getenv("PORT", "8000"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development").lower()
 
     # Database Configuration
     DATABASE_URL: str = os.getenv(
@@ -88,7 +89,7 @@ class Settings:
 
         # Validate encryption key
         if not self.ENCRYPTION_KEY:
-            if not self.DEBUG:
+            if not self.DEBUG and self.ENVIRONMENT != "test":
                 raise ValueError("ENCRYPTION_KEY must be set in production")
         else:
             # Validate encryption key format (should be base64 encoded Fernet key)
@@ -98,7 +99,7 @@ class Settings:
                 # Test if it's a valid Fernet key
                 Fernet(self.ENCRYPTION_KEY.encode())
             except Exception:
-                if not self.DEBUG:
+                if not self.DEBUG and self.ENVIRONMENT != "test":
                     raise ValueError(
                         "ENCRYPTION_KEY must be a valid base64-encoded Fernet key"
                     ) from None

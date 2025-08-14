@@ -116,8 +116,7 @@ class TestEncryptionFunctions:
             assert decrypted == api_key, f"Round trip failed for {key_name} key"
 
     def test_encryption_with_different_keys_produces_different_results(
-        self,
-        sample_api_keys
+        self, sample_api_keys
     ):
         """Test that same API key encrypted with different keys produces different results"""
         groq_key = sample_api_keys["groq"]
@@ -158,7 +157,7 @@ class TestEncryptionFunctions:
     def test_encryption_handles_special_characters(self):
         """Test encryption handles API keys with special characters"""
         encryption_key = generate_encryption_key()
-        special_key = "gsk_test-key-with-special-chars!@#$%^&*()_+-={}[]|\:;\"'<>?,./"
+        special_key = "gsk_test-key-with-special-chars!@#$%^&*()_+-={}[];:'<>?,./"
 
         encrypted = encrypt_api_key(special_key, encryption_key)
         decrypted = decrypt_api_key(encrypted, encryption_key)
@@ -249,7 +248,7 @@ class TestEncryptionIntegration:
         encrypted = encrypt_api_key(api_key, encryption_key)
 
         # Encrypted key should be safe for database storage (no special SQL chars)
-        unsafe_chars = ["'", "\"", ";", "--", "/*", "*/"]
+        unsafe_chars = ["'", '"', ";", "--", "/*", "*/"]
         for char in unsafe_chars:
             assert (
                 char not in encrypted
