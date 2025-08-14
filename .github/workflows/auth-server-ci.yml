@@ -294,6 +294,10 @@ jobs:
     needs: [lint-and-format, test, security-scan, docker-build, integration-test]
     if: always()
 
+    defaults:
+      run:
+        working-directory: .
+
     steps:
     - name: Notify success
       if: ${{ needs.lint-and-format.result == 'success' && needs.test.result == 'success' && needs.security-scan.result == 'success' && needs.docker-build.result == 'success' && needs.integration-test.result == 'success' }}
