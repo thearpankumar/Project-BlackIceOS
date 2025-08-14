@@ -144,7 +144,7 @@ async def log_requests(request: Request, call_next):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors with detailed messages"""
     logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
-    
+
     # Convert ValidationError details to JSON-serializable format
     errors = []
     for error in exc.errors():

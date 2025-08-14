@@ -17,6 +17,7 @@ def is_database_available():
     try:
         # For unit tests, always assume database is available (using test SQLite)
         import os
+
         if os.getenv("ENVIRONMENT") == "test":
             return True
         return check_database_health()
@@ -36,7 +37,7 @@ class TestDatabaseConnection:
         # Test that we can perform a basic query with the test database
         result = db_session.execute(text("SELECT 1")).scalar()
         assert result == 1
-        
+
         # Also test the actual health check function (may fail if no real DB)
         try:
             health = check_database_health()

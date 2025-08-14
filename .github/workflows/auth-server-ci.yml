@@ -120,8 +120,8 @@ jobs:
           echo "Waiting for PostgreSQL... ($i/30)"
           sleep 1
         done
-        
-        # Wait for Redis to be ready  
+
+        # Wait for Redis to be ready
         for i in {1..10}; do
           if redis-cli -h localhost ping; then
             echo "Redis is ready"

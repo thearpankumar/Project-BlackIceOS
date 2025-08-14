@@ -102,14 +102,14 @@ test: add integration tests
 
 ## 🌐 Service URLs
 - **Auth Server**: http://localhost:8000
-- **Health Check**: http://localhost:8000/health  
+- **Health Check**: http://localhost:8000/health
 - **API Docs**: http://localhost:8000/docs
 - **Prometheus**: http://localhost:9090
 - **Grafana**: http://localhost:3000 (admin/admin)
 
 ## ⚠️ Before Creating PR
 - [ ] Tests pass: `uv run --env-file ../.env pytest tests/`
-- [ ] Code formatted: `uv run black . && uv run ruff check . --fix`  
+- [ ] Code formatted: `uv run black . && uv run ruff check . --fix`
 - [ ] Type checks: `uv run mypy app/ --ignore-missing-imports`
 - [ ] Pre-commit passes: `uv run --env-file ../.env pre-commit run --all-files  --config ../.pre-commit-config.yaml
 `
