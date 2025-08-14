@@ -115,7 +115,9 @@ class TestEncryptionFunctions:
             # Verify matches original
             assert decrypted == api_key, f"Round trip failed for {key_name} key"
 
-    def test_encryption_with_different_keys_produces_different_results(self, sample_api_keys):
+    def test_encryption_with_different_keys_produces_different_results(
+        self, sample_api_keys
+    ):
         """Test that same API key encrypted with different keys produces different results"""
         groq_key = sample_api_keys["groq"]
 
@@ -139,7 +141,7 @@ class TestEncryptionFunctions:
         encrypted = encrypt_api_key(groq_key, key1)
 
         # Try to decrypt with key2 - should fail
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             decrypt_api_key(encrypted, key2)
 
     def test_encryption_handles_empty_string(self):
@@ -195,8 +197,10 @@ class TestEncryptionSecurity:
             # Encrypted data should not contain any part of original key
             # Check for substrings longer than 3 characters
             for i in range(len(api_key) - 3):
-                substring = api_key[i:i+4]
-                assert substring not in encrypted, f"Plaintext fragment '{substring}' found in encrypted {key_name}"
+                substring = api_key[i : i + 4]
+                assert (
+                    substring not in encrypted
+                ), f"Plaintext fragment '{substring}' found in encrypted {key_name}"
 
     def test_encryption_key_format_validation(self):
         """Test that encryption key format is validated"""
@@ -211,7 +215,7 @@ class TestEncryptionSecurity:
         api_key = "gsk_test_key"
 
         for invalid_key in invalid_keys:
-            with pytest.raises(Exception):
+            with pytest.raises(ValueError):
                 encrypt_api_key(api_key, invalid_key)
 
     def test_api_key_length_limits(self):
@@ -223,7 +227,7 @@ class TestEncryptionSecurity:
             "short",
             "medium_length_api_key_12345",
             "very_long_api_key_" + "x" * 100,
-            "extremely_long_key_" + "y" * 500
+            "extremely_long_key_" + "y" * 500,
         ]
 
         for test_key in test_keys:
@@ -244,12 +248,14 @@ class TestEncryptionIntegration:
         encrypted = encrypt_api_key(api_key, encryption_key)
 
         # Encrypted key should be safe for database storage (no special SQL chars)
-        unsafe_chars = ["'", '"', ';', '--', '/*', '*/']
+        unsafe_chars = ["'", '"', ";", "--", "/*", "*/"]
         for char in unsafe_chars:
-            assert char not in encrypted, f"Unsafe SQL character '{char}' found in encrypted key"
+            assert (
+                char not in encrypted
+            ), f"Unsafe SQL character '{char}' found in encrypted key"
 
         # Should be valid UTF-8
-        encrypted.encode('utf-8')  # Should not raise exception
+        encrypted.encode("utf-8")  # Should not raise exception
 
     def test_encryption_performance(self, sample_api_keys):
         """Test encryption/decryption performance is acceptable"""
@@ -278,5 +284,9 @@ class TestEncryptionIntegration:
         avg_encryption_time = encryption_time / iterations
         avg_decryption_time = decryption_time / iterations
 
-        assert avg_encryption_time < 0.01, f"Encryption too slow: {avg_encryption_time:.4f}s per operation"
-        assert avg_decryption_time < 0.01, f"Decryption too slow: {avg_decryption_time:.4f}s per operation"
+        assert (
+            avg_encryption_time < 0.01
+        ), f"Encryption too slow: {avg_encryption_time:.4f}s per operation"
+        assert (
+            avg_decryption_time < 0.01
+        ), f"Decryption too slow: {avg_decryption_time:.4f}s per operation"

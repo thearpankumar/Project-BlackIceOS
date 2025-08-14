@@ -27,12 +27,12 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # From the project root directory (Samsung-AI-os/)
    cp .env.example .env
-   
+
    # Generate secure keys and update .env file
    python3 -c "
    from cryptography.fernet import Fernet
    import secrets
-   
+
    print('# Add these to your .env file:')
    print(f'DB_PASSWORD={secrets.token_urlsafe(32)}')
    print(f'JWT_SECRET_KEY={secrets.token_urlsafe(64)}')
@@ -45,7 +45,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # From Samsung-AI-os/ directory (where docker-compose.yml is located)
    docker-compose up -d
-   
+
    # Check service health
    docker-compose ps
    ```
@@ -54,10 +54,10 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # Test health endpoint
    curl http://localhost:8000/health
-   
+
    # View API documentation
    open http://localhost:8000/docs
-   
+
    # Check database status
    curl http://localhost:8000/database/status
    ```
@@ -68,16 +68,16 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    curl -X POST http://localhost:8000/auth/register \
      -H "Content-Type: application/json" \
      -d '{
-       "username": "testuser", 
-       "email": "test@example.com", 
+       "username": "testuser",
+       "email": "test@example.com",
        "password": "SecurePassword123"
      }'
-   
+
    # Login and get JWT token + encrypted API keys
    curl -X POST http://localhost:8000/auth/login \
      -H "Content-Type: application/json" \
      -d '{
-       "username": "testuser", 
+       "username": "testuser",
        "password": "SecurePassword123"
      }'
    ```
@@ -85,7 +85,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
 5. **Add API Keys (Groq & Google GenAI)**
    ```bash
    # Get your JWT token from login response, then:
-   
+
    # Add Groq API key
    curl -X POST http://localhost:8000/auth/api-keys \
      -H "Content-Type: application/json" \
@@ -94,7 +94,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
        "key_name": "groq",
        "api_key": "gsk_your_actual_groq_api_key_here"
      }'
-   
+
    # Add Google Generative AI key
    curl -X POST http://localhost:8000/auth/api-keys \
      -H "Content-Type: application/json" \
@@ -111,7 +111,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # Install uv (ultra-fast Python package manager)
    curl -LsSf https://astral.sh/uv/install.sh | sh
-   
+
    # Add to PATH (restart shell or run):
    export PATH="$HOME/.local/bin:$PATH"
    ```
@@ -120,10 +120,10 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # Navigate to auth-server directory
    cd auth-server/
-   
+
    # Install dependencies (10-100x faster than pip!)
    uv sync
-   
+
    # Install test dependencies
    uv sync --group test
    ```
@@ -141,37 +141,37 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # Run all tests with coverage
    uv run pytest tests/ -v --cov=app
-   
+
    # Run specific test files
    uv run pytest tests/test_auth.py -v
    uv run pytest tests/test_encryption.py -v
    uv run pytest tests/test_database.py -v
-   
+
    # Generate HTML coverage report
    uv run pytest tests/ --cov=app --cov-report=html
-   
+
    # Run tests with different verbosity levels
    uv run pytest tests/ -v           # Verbose output
    uv run pytest tests/ -vv          # Very verbose output
    uv run pytest tests/ -s           # Show print statements
    uv run pytest tests/ -x           # Stop on first failure
    uv run pytest tests/ --tb=short   # Short traceback format
-   
+
    # Run tests matching specific patterns
    uv run pytest tests/ -k "test_user_registration"     # Run tests with this name pattern
    uv run pytest tests/ -k "not slow"                   # Skip tests marked as slow
    uv run pytest tests/ -m "unit"                       # Run tests marked with @pytest.mark.unit
-   
+
    # Parallel test execution (install pytest-xdist first)
    uv add --group test pytest-xdist
    uv run pytest tests/ -n auto      # Run tests in parallel using all CPUs
    uv run pytest tests/ -n 4         # Run tests using 4 processes
-   
+
    # Generate different coverage report formats
    uv run pytest tests/ --cov=app --cov-report=term-missing  # Show missing lines in terminal
    uv run pytest tests/ --cov=app --cov-report=xml           # Generate coverage.xml
    uv run pytest tests/ --cov=app --cov-report=json          # Generate coverage.json
-   
+
    # Run tests with specific markers
    uv run pytest tests/ -m "not integration"  # Skip integration tests
    uv run pytest tests/ -m "unit or security" # Run unit and security tests only
@@ -181,7 +181,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # Start FastAPI server with hot reload
    uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   
+
    # Server will be available at:
    # - API: http://localhost:8000
    # - Docs: http://localhost:8000/docs
@@ -192,7 +192,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
    ```bash
    # Test health endpoint
    curl http://localhost:8000/health
-   
+
    # Test user registration
    curl -X POST http://localhost:8000/auth/register \
      -H "Content-Type: application/json" \
@@ -227,7 +227,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
 - **Key Name**: `groq`
 
 ### Google Generative AI
-- **Key Format**: `AIza*` (validated on input)  
+- **Key Format**: `AIza*` (validated on input)
 - **Usage**: Google's Gemini and PaLM models
 - **Key Name**: `google_genai`
 
@@ -262,7 +262,7 @@ Secure authentication and API key management for Kali AI-OS using FastAPI, Postg
 DB_PASSWORD=your_secure_db_password_32_chars_minimum
 DATABASE_URL=postgresql://kali_auth:${DB_PASSWORD}@postgres:5432/kali_auth_db
 
-# JWT Configuration  
+# JWT Configuration
 JWT_SECRET_KEY=your_jwt_secret_key_64_chars_minimum
 JWT_ALGORITHM=HS256
 JWT_EXPIRATION_HOURS=24
@@ -671,7 +671,7 @@ curl http://localhost:8000/health
    ```bash
    # Test with full test suite
    uv run pytest tests/ --cov=app -v
-   
+
    # Test with Docker environment
    docker-compose restart auth-server
    curl http://localhost:8000/health
@@ -725,6 +725,6 @@ For issues and questions:
 - Test with curl commands provided in this README
 - Verify environment variables are properly set
 
-**Version**: 1.0.0  
-**Status**: ✅ Production Ready  
+**Version**: 1.0.0
+**Status**: ✅ Production Ready
 **Next**: Ready for Task 2 (Voice Recognition Engine) integration

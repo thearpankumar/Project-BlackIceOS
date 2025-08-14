@@ -22,7 +22,7 @@ from app.database.connection import (
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.DEBUG else logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ startup_time = time.time()
 async def lifespan(app: FastAPI):
     """
     Application lifecycle management
-    
+
     Handles startup and shutdown tasks:
     - Database initialization
     - Health checks
@@ -60,7 +60,9 @@ async def lifespan(app: FastAPI):
             logger.info(f"Cleaned up {expired_count} expired sessions on startup")
 
         logger.info("Authentication server started successfully")
-        logger.info(f"Server configuration: DEBUG={settings.DEBUG}, CORS={settings.ALLOWED_ORIGINS}")
+        logger.info(
+            f"Server configuration: DEBUG={settings.DEBUG}, CORS={settings.ALLOWED_ORIGINS}"
+        )
 
     except Exception as e:
         logger.error(f"Startup failed: {e}")
@@ -91,15 +93,12 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs" if settings.DEBUG else None,  # Hide docs in production
     redoc_url="/redoc" if settings.DEBUG else None,
-    openapi_url="/openapi.json" if settings.DEBUG else None
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 
 # CORS middleware configuration
-app.add_middleware(
-    CORSMiddleware,
-    **settings.get_cors_config()
-)
+app.add_middleware(CORSMiddleware, **settings.get_cors_config())
 
 
 # Request logging middleware
@@ -109,14 +108,18 @@ async def log_requests(request: Request, call_next):
     start_time = time.time()
 
     # Log request
-    logger.info(f"{request.method} {request.url.path} - {request.client.host if request.client else 'unknown'}")
+    logger.info(
+        f"{request.method} {request.url.path} - {request.client.host if request.client else 'unknown'}"
+    )
 
     try:
         response = await call_next(request)
 
         # Log response
         process_time = time.time() - start_time
-        logger.info(f"{request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s")
+        logger.info(
+            f"{request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s"
+        )
 
         # Add timing header
         response.headers["X-Process-Time"] = str(process_time)
@@ -125,7 +128,9 @@ async def log_requests(request: Request, call_next):
 
     except Exception as e:
         process_time = time.time() - start_time
-        logger.error(f"{request.method} {request.url.path} - ERROR - {process_time:.3f}s - {str(e)}")
+        logger.error(
+            f"{request.method} {request.url.path} - ERROR - {process_time:.3f}s - {str(e)}"
+        )
         raise
 
 
@@ -140,8 +145,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "detail": exc.errors(),
             "error_type": "validation_error",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     )
 
 
@@ -155,8 +160,8 @@ async def internal_server_error_handler(request: Request, exc: Exception):
         content={
             "detail": "Internal server error occurred",
             "error_code": "INTERNAL_ERROR",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     )
 
 
@@ -165,7 +170,7 @@ async def internal_server_error_handler(request: Request, exc: Exception):
 async def health_check():
     """
     Comprehensive health check including database connectivity
-    
+
     Returns:
         HealthCheckResponse: Server health status
     """
@@ -178,7 +183,7 @@ async def health_check():
         version="1.0.0",
         service="kali-ai-os-auth",
         timestamp=datetime.utcnow(),
-        uptime_seconds=uptime_seconds
+        uptime_seconds=uptime_seconds,
     )
 
 
@@ -187,7 +192,7 @@ async def health_check():
 async def database_status():
     """
     Check database connection status with detailed information
-    
+
     Returns:
         dict: Database status and information
     """
@@ -201,7 +206,7 @@ async def database_status():
         "database_version": db_info["version"],
         "table_count": db_info["table_count"],
         "status": "ok" if db_info["healthy"] else "error",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -210,7 +215,7 @@ async def database_status():
 async def root():
     """
     Root endpoint with API information
-    
+
     Returns:
         dict: API information and available endpoints
     """
@@ -226,10 +231,10 @@ async def root():
             "user_profile": "/auth/me",
             "api_keys": "/auth/api-keys",
             "sessions": "/auth/sessions",
-            "documentation": "/docs" if settings.DEBUG else None
+            "documentation": "/docs" if settings.DEBUG else None,
         },
         "supported_providers": ["groq", "google_genai"],
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -238,7 +243,7 @@ async def root():
 async def system_info():
     """
     System information endpoint for monitoring and debugging
-    
+
     Returns:
         dict: System information
     """
@@ -249,19 +254,19 @@ async def system_info():
         "version": "1.0.0",
         "uptime_seconds": uptime_seconds,
         "debug_mode": settings.DEBUG,
-        "database_type": "postgresql" if "postgresql" in settings.DATABASE_URL else "sqlite",
+        "database_type": "postgresql"
+        if "postgresql" in settings.DATABASE_URL
+        else "sqlite",
         "supported_api_providers": settings.SUPPORTED_API_PROVIDERS,
-        "cors_origins": settings.ALLOWED_ORIGINS if settings.DEBUG else ["***"],  # Hide in production
-        "timestamp": datetime.utcnow().isoformat()
+        "cors_origins": settings.ALLOWED_ORIGINS
+        if settings.DEBUG
+        else ["***"],  # Hide in production
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
 # Include authentication routes
-app.include_router(
-    auth_routes.router,
-    prefix="/auth",
-    tags=["authentication"]
-)
+app.include_router(auth_routes.router, prefix="/auth", tags=["authentication"])
 
 
 # Admin endpoints (if needed)
@@ -269,22 +274,25 @@ app.include_router(
 async def admin_stats():
     """
     Admin statistics endpoint
-    
+
     Returns:
         dict: System statistics (implement admin authentication as needed)
     """
     from app.database.connection import SessionLocal
-    from app.database.models import APIKey, User
+    from app.database.models import APIKey
     from app.database.models import Session as UserSession
+    from app.database.models import User
 
     db = SessionLocal()
     try:
         total_users = db.query(User).count()
-        active_users = db.query(User).filter(User.is_active == True).count()
+        active_users = db.query(User).filter(User.is_active).count()
         total_api_keys = db.query(APIKey).count()
-        total_sessions = db.query(UserSession).filter(
-            UserSession.expires_at > datetime.utcnow()
-        ).count()
+        total_sessions = (
+            db.query(UserSession)
+            .filter(UserSession.expires_at > datetime.utcnow())
+            .count()
+        )
 
         return {
             "total_users": total_users,
@@ -293,7 +301,7 @@ async def admin_stats():
             "active_sessions": total_sessions,
             "database_healthy": check_database_health(),
             "uptime_hours": (time.time() - startup_time) / 3600,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
     finally:
@@ -301,7 +309,7 @@ async def admin_stats():
 
 
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn  # type: ignore
 
     # Run server
     uvicorn.run(
@@ -309,5 +317,5 @@ if __name__ == "__main__":
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,
-        log_level="debug" if settings.DEBUG else "info"
+        log_level="debug" if settings.DEBUG else "info",
     )
