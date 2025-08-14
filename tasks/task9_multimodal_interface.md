@@ -21,6 +21,10 @@ This task creates the "user gateway" for Kali AI-OS - multiple ways to interact 
 # 1. Install interface dependencies (in VM)
 sudo apt update
 sudo apt install -y nodejs npm python3-tk
+# Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --all-extras
+
 pip install fastapi uvicorn websockets
 pip install tkinter customtkinter streamlit
 pip install flask-socketio eventlet
@@ -1370,6 +1374,10 @@ python scripts/test_browser_compatibility.py
 ### Setup Commands
 ```bash
 # 1. Install interface dependencies
+# Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --all-extras
+
 pip install click rich prompt-toolkit fastapi uvicorn
 pip install customtkinter tkinter websockets
 

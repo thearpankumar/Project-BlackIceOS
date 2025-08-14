@@ -16,21 +16,27 @@ This task builds the secure foundation for the entire Kali AI-OS by creating a F
 
 ## How to Complete This Task - Step by Step
 
-### Phase 1: Setup Development Environment (30 minutes)
+### Phase 1: Setup Development Environment with uv (30 minutes)
 ```bash
 # 1. Create project structure
 mkdir -p auth-server/{app/{auth,database,core,utils},tests,migrations}
 
-# 2. Setup Python virtual environment
+# 2. Install uv (modern Python package manager)
 cd auth-server
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate     # Windows
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Or: pip install uv
 
-# 3. Install base dependencies
-pip install fastapi uvicorn sqlalchemy psycopg2-binary redis
-pip install cryptography pyjwt bcrypt python-multipart
-pip install pytest pytest-asyncio pytest-cov
+# 3. Initialize Python project with uv
+uv init --name auth-server --python 3.11
+uv add fastapi uvicorn sqlalchemy psycopg2-binary redis
+uv add cryptography pyjwt bcrypt python-multipart
+uv add pytest pytest-asyncio pytest-cov --dev
+uv add ruff black isort mypy bandit safety --dev
+
+# 4. Verify uv setup
+uv sync --all-extras
+uv run python --version
+uv run pytest --version
 ```
 
 ### Phase 2: Write Tests First (45 minutes)
@@ -442,13 +448,29 @@ JWT_SECRET_KEY=your_jwt_secret_32_chars_minimum
 ENCRYPTION_KEY=your_base64_encryption_key
 ```
 
-### Phase 6: Testing & Validation (30 minutes)
+### Phase 6: Testing & Validation with uv (30 minutes)
 ```bash
-# Run all tests
-python -m pytest tests/ -v --cov=app
+# Run all tests with uv
+uv run --env-file ../.env pytest tests/ -v --cov=app --cov-report=term-missing
+
+# Run specific test types
+uv run --env-file ../.env pytest tests/test_auth.py -v
+uv run --env-file ../.env pytest tests/test_database.py -v
+uv run --env-file ../.env pytest tests/test_encryption.py -v
+
+# Code quality checks with uv
+uv run ruff check . --fix
+uv run black .
+uv run isort .
+uv run mypy app/ --ignore-missing-imports
+uv run bandit -r app/
+uv run safety check
+
+# Start development server with uv
+uv run --env-file ../.env uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Test API endpoints and database
 curl http://localhost:8000/health
@@ -766,11 +788,23 @@ echo "✅ Database integration verified!"
 
 ## Testing Strategy
 
-### Unit Tests (80% coverage minimum)
+### Unit Tests with uv (80% coverage minimum)
 ```bash
-# Run unit tests with database
+# Run unit tests with database using uv
 cd auth-server
-python -m pytest tests/ -v --cov=app --cov-report=html
+uv run --env-file ../.env pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
+
+# Run tests with different options
+uv run --env-file ../.env pytest tests/ -v --tb=short                    # Short traceback
+uv run --env-file ../.env pytest tests/ -v --tb=long                     # Detailed errors
+uv run --env-file ../.env pytest tests/ -x                               # Stop on first failure
+uv run --env-file ../.env pytest tests/ --lf                             # Run last failed only
+uv run --env-file ../.env pytest tests/ -k "test_auth"                   # Run specific pattern
+uv run --env-file ../.env pytest tests/ -m "not integration"             # Skip integration tests
+
+# Coverage reporting with uv
+uv run --env-file ../.env pytest tests/ --cov=app --cov-fail-under=80    # Fail if coverage < 80%
+uv run --env-file ../.env pytest tests/ --cov=app --cov-report=xml       # XML report for CI
 
 # Expected tests:
 # - Database connection and health checks
@@ -879,16 +913,22 @@ def test_foreign_key_relationships(db_session: Session):
     db_session.commit()
 ```
 
-### Integration Tests
+### Integration Tests with uv
 ```bash
 # Test database connections
-python -m pytest tests/test_database.py -v
+uv run --env-file ../.env pytest tests/test_database.py -v
 
 # Test API endpoints
-python -m pytest tests/test_auth.py -v
+uv run --env-file ../.env pytest tests/test_auth.py -v
 
 # Test encryption/decryption
-python -m pytest tests/test_encryption.py -v
+uv run --env-file ../.env pytest tests/test_encryption.py -v
+
+# Run all integration tests with markers
+uv run --env-file ../.env pytest tests/ -m integration -v
+
+# Run integration tests with database reset
+uv run --env-file ../.env pytest tests/ --create-db --reset-db -v
 ```
 
 ### Security Tests
@@ -926,15 +966,19 @@ def test_jwt_token_expiration():
 
 ## Deployment & Testing
 
-### Setup Commands
+### Setup Commands with uv
 ```bash
-# 1. Clone repository and setup environment
+# 1. Clone repository and setup environment with uv
 cd Samsung-AI-os
 cp .env.example .env
 # Edit .env with your secure values
 
+cd auth-server
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --all-extras
+
 # 2. Generate encryption keys and secure passwords
-python -c "
+uv run python -c "
 import secrets
 import base64
 from cryptography.fernet import Fernet
@@ -955,13 +999,23 @@ print('\n✅ Add these to your .env file')
 "
 
 # 3. Start services
-docker-compose up -d
+docker compose up -d
 
-# 4. Run tests
-cd auth-server
-python -m pytest tests/ -v
+# 4. Run tests with uv
+uv run --env-file ../.env pytest tests/ -v --cov=app --cov-fail-under=80
 
-# 5. Check health
+# 5. Run all quality checks
+uv run ruff check . --fix
+uv run black .
+uv run isort .
+uv run mypy app/ --ignore-missing-imports
+uv run bandit -r app/
+uv run safety check
+
+# 6. Start development server
+uv run --env-file ../.env uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 7. Check health
 curl http://localhost:8000/health
 ```
 
@@ -1076,3 +1130,131 @@ docker exec $(docker ps -q -f name=postgres) pg_dump -U kali_auth kali_auth_db >
 - **Encryption errors**: Ensure ENCRYPTION_KEY is base64 encoded
 - **Docker build fails**: Check Dockerfile and requirements.txt
 - **CORS errors**: Update ALLOWED_ORIGINS in environment variables
+
+## 📦 Complete uv Workflow Reference
+
+### Essential uv Commands for Daily Development
+
+```bash
+# Package Management
+uv add fastapi                    # Add production dependency
+uv add pytest --dev             # Add development dependency  
+uv remove package-name          # Remove dependency
+uv sync --all-extras            # Install all dependencies including dev
+uv sync --no-dev               # Install only production dependencies
+uv lock                        # Update lock file
+uv lock --upgrade              # Update dependencies to latest versions
+
+# Virtual Environment Management
+uv venv                        # Create virtual environment
+uv venv --python 3.11          # Create with specific Python version
+uv pip list                    # List installed packages
+uv pip freeze                  # Export requirements
+uv pip compile requirements.in # Compile requirements
+
+# Running Commands
+uv run python script.py       # Run Python script
+uv run pytest tests/          # Run tests
+uv run uvicorn app.main:app    # Start server
+uv run --env-file .env pytest # Run with environment file
+
+# Development Tools
+uv run ruff check . --fix              # Lint and fix code
+uv run black .                         # Format code
+uv run isort .                         # Sort imports
+uv run mypy app/                       # Type checking
+uv run bandit -r app/                  # Security scan
+uv run safety check                    # Vulnerability scan
+```
+
+### Complete Development Workflow with uv
+
+```bash
+# 1. Project Setup
+mkdir my-project && cd my-project
+uv init --name my-project --python 3.11
+uv add fastapi uvicorn sqlalchemy
+uv add pytest ruff black isort mypy --dev
+
+# 2. Daily Development Cycle
+uv sync --all-extras                   # Sync dependencies
+uv run --env-file .env pytest tests/ -v # Run tests
+uv run ruff check . --fix              # Fix linting issues  
+uv run black .                         # Format code
+uv run mypy app/                       # Type check
+
+# 3. Before Committing
+uv run pytest tests/ --cov=app --cov-fail-under=80
+uv run ruff check .
+uv run black --check .
+uv run isort --check-only .
+uv run mypy app/ --ignore-missing-imports
+
+# 4. Start Development Server
+uv run --env-file .env uvicorn app.main:app --reload
+
+# 5. Production Build
+uv sync --no-dev                      # Install only prod deps
+uv run python -m app.main            # Run application
+```
+
+### uv Configuration Examples
+
+**pyproject.toml configuration:**
+```toml
+[project]
+name = "auth-server"
+version = "1.0.0"
+description = "Authentication server for Kali AI-OS"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104.1",
+    "uvicorn>=0.24.0",
+    "sqlalchemy>=2.0.23",
+    "psycopg2-binary>=2.9.9",
+    "cryptography>=41.0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.6",
+    "black>=23.11.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.1",
+    "bandit>=1.7.5",
+    "safety>=2.3.5",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "W", "F", "B", "I", "N", "UP", "ANN", "S", "FBT", "A", "COM", "C4", "DTZ", "T10", "EXE", "ISC", "ICN", "G", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "RUF"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+```
+
+### Why Use uv?
+
+✅ **Performance Benefits:**
+- 10-100x faster than pip for package installation
+- Significantly faster dependency resolution
+- Built in Rust for maximum performance
+
+✅ **Developer Experience:**
+- Single tool for all Python package management
+- Automatic virtual environment management  
+- Built-in project initialization
+- Comprehensive dependency management
+
+✅ **Production Ready:**
+- Reproducible builds with lock files
+- Python version management
+- Cross-platform compatibility
+- CI/CD optimized
+
+**Remember:** Always use `uv run` for Python commands to ensure proper virtual environment activation! 🚀

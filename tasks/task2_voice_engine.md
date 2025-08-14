@@ -24,12 +24,18 @@ sudo apt install -y pulseaudio pulseaudio-utils alsa-utils
 sudo apt install -y portaudio19-dev python3-pyaudio
 sudo apt install -y espeak espeak-data libespeak-dev
 
-# 2. Test audio system
+# 2. Setup Python environment with uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv add vosk pyaudio speech-recognition
+uv add pytest pytest-asyncio --dev
+uv sync --all-extras
+
+# 3. Test audio system
 arecord -l  # List recording devices
 aplay -l   # List playback devices
 arecord -f cd -t wav -d 5 test.wav && aplay test.wav  # Test microphone
 
-# 3. Download Vosk model
+# 4. Download Vosk model
 cd kali-ai-os/src/voice/models/
 wget https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip
 unzip vosk-model-en-us-0.22.zip
