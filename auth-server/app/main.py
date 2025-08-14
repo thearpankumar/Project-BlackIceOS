@@ -274,13 +274,13 @@ async def system_info():
         "version": "1.0.0",
         "uptime_seconds": uptime_seconds,
         "debug_mode": settings.DEBUG,
-        "database_type": "postgresql"
-        if "postgresql" in settings.DATABASE_URL
-        else "sqlite",
+        "database_type": (
+            "postgresql" if "postgresql" in settings.DATABASE_URL else "sqlite"
+        ),
         "supported_api_providers": settings.SUPPORTED_API_PROVIDERS,
-        "cors_origins": settings.ALLOWED_ORIGINS
-        if settings.DEBUG
-        else ["***"],  # Hide in production
+        "cors_origins": (
+            settings.ALLOWED_ORIGINS if settings.DEBUG else ["***"]
+        ),  # Hide in production
         "timestamp": datetime.utcnow().isoformat(),
     }
 

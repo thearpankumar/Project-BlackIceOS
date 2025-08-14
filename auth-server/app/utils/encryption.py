@@ -214,9 +214,9 @@ class EncryptionManager:
             "key_length": len(self.encryption_key),
             "key_set": bool(self.encryption_key),
             "cipher_initialized": hasattr(self, "cipher"),
-            "key_prefix": self.encryption_key[:8] + "..."
-            if self.encryption_key
-            else None,
+            "key_prefix": (
+                self.encryption_key[:8] + "..." if self.encryption_key else None
+            ),
         }
 
 
