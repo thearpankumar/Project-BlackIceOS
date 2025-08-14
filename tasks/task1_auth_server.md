@@ -39,15 +39,15 @@ pip install pytest pytest-asyncio pytest-cov
 def test_user_registration():
     """Test user can register successfully"""
     # Write test that expects user registration to work
-    
+
 def test_user_login():
     """Test user can login and receive JWT + encrypted keys"""
     # Write test that expects login to return token + keys
-    
+
 def test_api_key_encryption():
     """Test API keys are encrypted/decrypted correctly"""
     # Write test that verifies encryption works
-    
+
 def test_session_management():
     """Test session creation and validation"""
     # Write test that verifies JWT sessions work
@@ -104,7 +104,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
 -- Insert default admin user (password: 'admin123' - CHANGE IN PRODUCTION)
-INSERT INTO users (username, email, password_hash) VALUES 
+INSERT INTO users (username, email, password_hash) VALUES
 ('admin', 'admin@kali-ai-os.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewVyIslc/u9eJkF6')
 ON CONFLICT (username) DO NOTHING;
 EOF
@@ -121,7 +121,7 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = 'users'
-    
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
@@ -129,27 +129,27 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     last_login = Column(DateTime)
-    
+
     # Relationships
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
 
 class APIKey(Base):
     __tablename__ = 'api_keys'
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     key_name = Column(String(50), nullable=False)
     encrypted_key = Column(Text, nullable=False)
     created_at = Column(DateTime, default=func.now())
     last_used = Column(DateTime)
-    
+
     # Relationship
     user = relationship("User", back_populates="api_keys")
 
 class Session(Base):
     __tablename__ = 'sessions'
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     session_token = Column(String(255), unique=True, nullable=False, index=True)
@@ -157,7 +157,7 @@ class Session(Base):
     created_at = Column(DateTime, default=func.now())
     ip_address = Column(String(45))  # For both IPv4 and IPv6
     user_agent = Column(Text)
-    
+
     # Relationship
     user = relationship("User", back_populates="sessions")
 EOF
@@ -244,19 +244,19 @@ async def lifespan(app: FastAPI):
     """Application lifecycle management"""
     # Startup
     logger.info("Starting Kali AI-OS Authentication Server...")
-    
+
     # Initialize database (fallback if migrations didn't run)
     if not create_tables():
         logger.warning("Database table creation failed, but continuing...")
-    
+
     # Check database health
     if not check_database_health():
         logger.error("Database health check failed!")
         raise Exception("Cannot start server - database unavailable")
-    
+
     logger.info("Authentication server started successfully")
     yield
-    
+
     # Shutdown
     logger.info("Shutting down authentication server...")
 
@@ -282,7 +282,7 @@ app.add_middleware(
 async def health_check():
     """Comprehensive health check including database"""
     db_healthy = check_database_health()
-    
+
     return {
         "status": "healthy" if db_healthy else "degraded",
         "database": "connected" if db_healthy else "disconnected",
@@ -301,7 +301,7 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "/health",
-            "register": "/auth/register", 
+            "register": "/auth/register",
             "login": "/auth/login",
             "refresh": "/auth/refresh"
         }
@@ -342,32 +342,32 @@ router = APIRouter()
 @router.post("/register", response_model=UserResponse)
 async def register_user(user_data: UserCreate, db: Session = Depends(get_database)):
     """Register a new user"""
-    
+
     # Check if user already exists
     existing_user = db.query(User).filter(
         (User.username == user_data.username) | (User.email == user_data.email)
     ).first()
-    
+
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username or email already registered"
         )
-    
+
     # Hash password
     password_hash = bcrypt.hashpw(user_data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    
+
     # Create new user
     new_user = User(
         username=user_data.username,
         email=user_data.email,
         password_hash=password_hash
     )
-    
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
+
     return UserResponse(
         id=new_user.id,
         username=new_user.username,
@@ -379,41 +379,41 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_databas
 @router.post("/login", response_model=TokenResponse)
 async def login_user(credentials: UserLogin, db: Session = Depends(get_database)):
     """Login user and return JWT token with encrypted API keys"""
-    
+
     # Find user
     user = db.query(User).filter(User.username == credentials.username).first()
-    
+
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    
+
     # Verify password
     if not bcrypt.checkpw(credentials.password.encode('utf-8'), user.password_hash.encode('utf-8')):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    
+
     # Update last login
     user.last_login = datetime.utcnow()
     db.commit()
-    
+
     # Generate JWT token
     access_token = create_access_token(data={"sub": str(user.id), "username": user.username})
-    
+
     # Get user's API keys (encrypted)
     api_keys = db.query(APIKey).filter(APIKey.user_id == user.id).all()
     encrypted_keys = {}
-    
+
     for key in api_keys:
         try:
             # Keys are already encrypted in database, just return them
             encrypted_keys[key.key_name] = key.encrypted_key
         except Exception as e:
             logger.warning(f"Failed to process API key {key.key_name}: {e}")
-    
+
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
@@ -438,7 +438,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 # docker-compose.yml - Already created, configure environment
 # Set your environment variables in .env file
 DB_PASSWORD=your_secure_password
-JWT_SECRET_KEY=your_jwt_secret_32_chars_minimum  
+JWT_SECRET_KEY=your_jwt_secret_32_chars_minimum
 ENCRYPTION_KEY=your_base64_encryption_key
 ```
 
@@ -620,7 +620,7 @@ version: '3.8'
 
 services:
   auth-server:
-    build: 
+    build:
       context: ./auth-server
       dockerfile: Dockerfile
     ports:
@@ -738,22 +738,22 @@ try:
         result = connection.execute(text("SELECT COUNT(*) FROM users"))
         user_count = result.fetchone()[0]
         print(f"✅ Database connected! Found {user_count} users.")
-        
+
         # Test tables exist
         tables = connection.execute(text("""
-            SELECT table_name FROM information_schema.tables 
+            SELECT table_name FROM information_schema.tables
             WHERE table_schema = 'public'
         """))
-        
+
         table_names = [row[0] for row in tables.fetchall()]
         expected_tables = ['users', 'api_keys', 'sessions']
-        
+
         for table in expected_tables:
             if table in table_names:
                 print(f"✅ Table '{table}' exists")
             else:
                 print(f"❌ Table '{table}' missing")
-                
+
 except Exception as e:
     print(f"❌ Database connection failed: {e}")
 EOF
@@ -810,11 +810,11 @@ def test_tables_exist(db_session: Session):
     # Check users table
     result = db_session.execute("SELECT COUNT(*) FROM users")
     assert result.fetchone()[0] >= 0
-    
+
     # Check api_keys table
     result = db_session.execute("SELECT COUNT(*) FROM api_keys")
     assert result.fetchone()[0] >= 0
-    
+
     # Check sessions table
     result = db_session.execute("SELECT COUNT(*) FROM sessions")
     assert result.fetchone()[0] >= 0
@@ -827,27 +827,27 @@ def test_user_crud_operations(db_session: Session):
         email="crud@test.com",
         password_hash="hashed_password"
     )
-    
+
     db_session.add(test_user)
     db_session.commit()
     db_session.refresh(test_user)
-    
+
     # Read user
     retrieved_user = db_session.query(User).filter(User.username == "test_crud").first()
     assert retrieved_user is not None
     assert retrieved_user.email == "crud@test.com"
-    
+
     # Update user
     retrieved_user.email = "updated@test.com"
     db_session.commit()
-    
+
     updated_user = db_session.query(User).filter(User.username == "test_crud").first()
     assert updated_user.email == "updated@test.com"
-    
+
     # Delete user
     db_session.delete(updated_user)
     db_session.commit()
-    
+
     deleted_user = db_session.query(User).filter(User.username == "test_crud").first()
     assert deleted_user is None
 
@@ -858,22 +858,22 @@ def test_foreign_key_relationships(db_session: Session):
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
-    
+
     # Create API key for user
     api_key = APIKey(
         user_id=user.id,
         key_name="googlegenai",
         encrypted_key="encrypted_key_data"
     )
-    
+
     db_session.add(api_key)
     db_session.commit()
-    
+
     # Test relationship
     retrieved_user = db_session.query(User).filter(User.id == user.id).first()
     assert len(retrieved_user.api_keys) == 1
     assert retrieved_user.api_keys[0].key_name == "googlegenai"
-    
+
     # Cleanup
     db_session.delete(user)  # Should cascade delete api_key
     db_session.commit()
@@ -911,7 +911,7 @@ def test_rate_limiting():
             "username": "nonexistent",
             "password": "wrongpassword"
         })
-    
+
     response = client.post("/auth/login", json={
         "username": "testuser",
         "password": "correctpassword"

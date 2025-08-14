@@ -44,22 +44,22 @@ def test_dangerous_command_blocking():
     """Test blocking of system-destructive commands"""
     # Input: "rm -rf /", "dd if=/dev/zero of=/dev/sda"
     # Expected: Blocked with HIGH risk level
-    
+
 def test_authorized_scope_validation():
     """Test target scope authorization"""
     # Input: nmap command with target outside authorized scope
     # Expected: Blocked with unauthorized_target reason
-    
+
 def test_ethical_violation_detection():
     """Test detection of unethical activities"""
     # Input: data theft, unauthorized access attempts
     # Expected: Blocked with ethical_violation flag
-    
+
 def test_emergency_stop_functionality():
     """Test emergency shutdown works instantly"""
     # Input: Emergency stop trigger
     # Expected: All operations stopped within 1 second
-    
+
 def test_audit_trail_integrity():
     """Test audit logging cannot be tampered"""
     # Input: Log activities, attempt to modify logs
@@ -112,40 +112,40 @@ class CommandValidator:
                 r'masscan.*0\.0\.0\.0/0'       # Mass scan internet
             ]
         }
-        
+
         # Security tools - allowed but monitored
         self.security_tools = {
             'nmap', 'nikto', 'dirb', 'gobuster', 'burpsuite',
             'wireshark', 'sqlmap', 'metasploit', 'hydra',
             'john', 'hashcat', 'aircrack-ng', 'recon-ng'
         }
-        
+
         # High-risk operations requiring authorization
         self.high_risk_operations = {
             'network_scanning', 'vulnerability_testing',
             'password_cracking', 'traffic_analysis',
             'exploitation', 'privilege_escalation_testing'
         }
-        
-    def validate_command(self, command: str, 
+
+    def validate_command(self, command: str,
                         context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Comprehensive command validation with safety checks"""
-        
+
         validation_start = datetime.now()
-        
+
         try:
             # Normalize command for analysis
             normalized_cmd = command.strip().lower()
-            
+
             # 1. Check for dangerous patterns
             danger_check = self._check_dangerous_patterns(command)
             if not danger_check['safe']:
                 return self._create_block_result(
-                    'dangerous_operation', 
+                    'dangerous_operation',
                     danger_check,
                     risk_level='CRITICAL'
                 )
-                
+
             # 2. Validate target authorization
             target_check = self._validate_target_authorization(command, context)
             if not target_check['authorized']:
@@ -154,7 +154,7 @@ class CommandValidator:
                     target_check,
                     risk_level='HIGH'
                 )
-                
+
             # 3. Check scope boundaries
             scope_check = self._check_scope_boundaries(command, context)
             if not scope_check['within_scope']:
@@ -163,10 +163,10 @@ class CommandValidator:
                     scope_check,
                     risk_level='HIGH'
                 )
-                
+
             # 4. Assess operation risk level
             risk_assessment = self._assess_operation_risk(command, context)
-            
+
             # 5. Check rate limits
             rate_limit_check = self._check_rate_limits(command, context)
             if not rate_limit_check['allowed']:
@@ -175,9 +175,9 @@ class CommandValidator:
                     rate_limit_check,
                     risk_level='MEDIUM'
                 )
-                
+
             validation_time = (datetime.now() - validation_start).total_seconds()
-            
+
             return {
                 'allowed': True,
                 'validation_passed': True,
@@ -190,7 +190,7 @@ class CommandValidator:
                 'recommended_monitoring': risk_assessment['monitoring_required'],
                 'approval_required': risk_assessment['requires_approval']
             }
-            
+
         except Exception as e:
             return {
                 'allowed': False,
@@ -199,11 +199,11 @@ class CommandValidator:
                 'risk_level': 'HIGH',
                 'block_reason': 'validation_failure'
             }
-            
+
     def _check_dangerous_patterns(self, command: str) -> Dict[str, Any]:
         """Check command against dangerous operation patterns"""
         dangerous_matches = []
-        
+
         for category, patterns in self.dangerous_patterns.items():
             for pattern in patterns:
                 if re.search(pattern, command, re.IGNORECASE):
@@ -212,17 +212,17 @@ class CommandValidator:
                         'pattern': pattern,
                         'severity': 'CRITICAL' if category in ['system_destruction', 'malware_download'] else 'HIGH'
                     })
-                    
+
         if dangerous_matches:
             return {
                 'safe': False,
                 'dangerous_patterns': dangerous_matches,
                 'highest_severity': max(match['severity'] for match in dangerous_matches)
             }
-            
+
         return {'safe': True, 'dangerous_patterns': []}
-        
-    def _validate_target_authorization(self, command: str, 
+
+    def _validate_target_authorization(self, command: str,
                                      context: Dict[str, Any]) -> Dict[str, Any]:
         """Validate targets against authorized scope"""
         if not context or 'authorized_scope' not in context:
@@ -231,24 +231,24 @@ class CommandValidator:
                 'reason': 'no_scope_restrictions',
                 'targets_found': []
             }
-            
+
         # Extract all potential targets from command
         targets = self._extract_all_targets(command)
-        
+
         if not targets:
             return {
                 'authorized': True,
                 'reason': 'no_targets_detected',
                 'targets_found': []
             }
-            
+
         authorized_scope = context['authorized_scope']
         unauthorized_targets = []
-        
+
         for target in targets:
             if not self._is_target_in_scope(target, authorized_scope):
                 unauthorized_targets.append(target)
-                
+
         if unauthorized_targets:
             return {
                 'authorized': False,
@@ -257,17 +257,17 @@ class CommandValidator:
                 'authorized_scope': authorized_scope,
                 'violation_type': 'scope_boundary'
             }
-            
+
         return {
             'authorized': True,
             'targets_found': targets,
             'all_targets_authorized': True
         }
-        
+
     def _extract_all_targets(self, command: str) -> List[Dict[str, str]]:
         """Extract IP addresses, domains, and URLs from command"""
         targets = []
-        
+
         # IPv4 addresses (including CIDR)
         ipv4_pattern = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:/[0-9]{1,2})?\b'
         for match in re.finditer(ipv4_pattern, command):
@@ -276,7 +276,7 @@ class CommandValidator:
                 'value': match.group(),
                 'position': match.span()
             })
-            
+
         # IPv6 addresses
         ipv6_pattern = r'\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b|\b::1\b|\b::ffff:[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b'
         for match in re.finditer(ipv6_pattern, command):
@@ -285,7 +285,7 @@ class CommandValidator:
                 'value': match.group(),
                 'position': match.span()
             })
-            
+
         # Domain names and hostnames
         domain_pattern = r'\b[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+\b'
         for match in re.finditer(domain_pattern, command):
@@ -297,7 +297,7 @@ class CommandValidator:
                     'value': domain,
                     'position': match.span()
                 })
-                
+
         # URLs
         url_pattern = r'https?://[^\s<>"]+'
         for match in re.finditer(url_pattern, command):
@@ -306,22 +306,22 @@ class CommandValidator:
                 'value': match.group(),
                 'position': match.span()
             })
-            
+
         return targets
-        
-    def _is_target_in_scope(self, target: Dict[str, str], 
+
+    def _is_target_in_scope(self, target: Dict[str, str],
                            authorized_scope: List[str]) -> bool:
         """Check if target is within authorized scope"""
         target_value = target['value']
         target_type = target['type']
-        
+
         for scope_item in authorized_scope:
             if self._target_matches_scope(target_value, target_type, scope_item):
                 return True
-                
+
         return False
-        
-    def _target_matches_scope(self, target_value: str, target_type: str, 
+
+    def _target_matches_scope(self, target_value: str, target_type: str,
                             scope_item: str) -> bool:
         """Check if target matches a scope item"""
         try:
@@ -330,23 +330,23 @@ class CommandValidator:
                 network = ipaddress.ip_network(scope_item, strict=False)
                 target_ip = ipaddress.ip_address(target_value.split('/')[0])
                 return target_ip in network
-                
+
             # Handle wildcard domains
             if scope_item.startswith('*.'):
-                domain_pattern = scope_item[2:]  # Remove '*.'  
+                domain_pattern = scope_item[2:]  # Remove '*.'
                 return target_value.endswith(domain_pattern)
-                
+
             # Exact match
             if target_value == scope_item:
                 return True
-                
+
             # Handle domain matching
             if target_type == 'domain' and scope_item in target_value:
                 return True
-                
+
         except (ipaddress.AddressValueError, ValueError):
             pass
-            
+
         return False
 ```
 
@@ -393,7 +393,7 @@ class EthicalChecker:
                 ]
             },
             'privacy_violation': {
-                'severity': 'HIGH', 
+                'severity': 'HIGH',
                 'description': 'Violating user privacy or accessing personal information',
                 'legal_implications': 'GDPR, CCPA, privacy law violations',
                 'patterns': [
@@ -415,24 +415,24 @@ class EthicalChecker:
                 ]
             }
         }
-        
-    def check_action_ethics(self, action: Dict[str, Any], 
+
+    def check_action_ethics(self, action: Dict[str, Any],
                           context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Comprehensive ethical analysis of proposed action"""
-        
+
         analysis_start = datetime.now()
         violations_detected = []
-        
+
         try:
             # 1. Check for direct ethical violations
             direct_violations = self._check_direct_violations(action)
             violations_detected.extend(direct_violations)
-            
+
             # 2. Analyze action intent and purpose
             intent_analysis = self._analyze_action_intent(action, context)
             if intent_analysis['suspicious']:
                 violations_detected.extend(intent_analysis['violations'])
-                
+
             # 3. Check authorization and consent
             authorization_check = self._verify_authorization(action, context)
             if not authorization_check['authorized']:
@@ -441,7 +441,7 @@ class EthicalChecker:
                     'reason': authorization_check['reason'],
                     'severity': 'CRITICAL'
                 })
-                
+
             # 4. Assess proportionality (means vs. ends)
             proportionality = self._assess_proportionality(action, context)
             if not proportionality['proportional']:
@@ -450,7 +450,7 @@ class EthicalChecker:
                     'reason': proportionality['reason'],
                     'severity': 'MEDIUM'
                 })
-                
+
             # 5. Check for potential collateral damage
             collateral_assessment = self._assess_collateral_risk(action, context)
             if collateral_assessment['high_risk']:
@@ -459,14 +459,14 @@ class EthicalChecker:
                     'reason': collateral_assessment['reason'],
                     'severity': 'HIGH'
                 })
-                
+
             analysis_time = (datetime.now() - analysis_start).total_seconds()
-            
+
             if violations_detected:
                 # Determine highest severity
                 severities = [v['severity'] for v in violations_detected]
                 max_severity = self._get_max_severity(severities)
-                
+
                 return {
                     'ethical_violation': True,
                     'violations': violations_detected,
@@ -484,7 +484,7 @@ class EthicalChecker:
                     'ethical_guidelines_followed': True,
                     'analysis_time_ms': analysis_time * 1000
                 }
-                
+
         except Exception as e:
             return {
                 'ethical_violation': True,
@@ -493,15 +493,15 @@ class EthicalChecker:
                 'recommendation': 'BLOCK_ACTION',
                 'severity': 'HIGH'
             }
-            
+
     def _check_direct_violations(self, action: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Check for direct ethical violations in action"""
         violations = []
-        
+
         action_type = action.get('action', '')
         description = action.get('description', '')
         command = action.get('command', '')
-        
+
         # Check unauthorized access patterns
         if self._indicates_unauthorized_access(action):
             violations.append({
@@ -509,7 +509,7 @@ class EthicalChecker:
                 'evidence': 'Action indicates unauthorized system access',
                 'severity': 'CRITICAL'
             })
-            
+
         # Check data exfiltration patterns
         if self._indicates_data_exfiltration(action):
             violations.append({
@@ -517,7 +517,7 @@ class EthicalChecker:
                 'evidence': 'Action indicates unauthorized data collection/transfer',
                 'severity': 'CRITICAL'
             })
-            
+
         # Check service disruption patterns
         if self._indicates_service_disruption(action):
             violations.append({
@@ -525,7 +525,7 @@ class EthicalChecker:
                 'evidence': 'Action may cause service disruption',
                 'severity': 'HIGH'
             })
-            
+
         # Check privacy violations
         if self._indicates_privacy_violation(action):
             violations.append({
@@ -533,9 +533,9 @@ class EthicalChecker:
                 'evidence': 'Action may violate user privacy',
                 'severity': 'HIGH'
             })
-            
+
         return violations
-        
+
     def _indicates_unauthorized_access(self, action: Dict[str, Any]) -> bool:
         """Check if action indicates unauthorized access attempt"""
         unauthorized_patterns = [
@@ -546,11 +546,11 @@ class EthicalChecker:
             'backdoor_creation',
             'unauthorized_shell_access'
         ]
-        
+
         action_str = str(action).lower()
         return any(pattern.replace('_', ' ') in action_str for pattern in unauthorized_patterns)
-        
-    def _verify_authorization(self, action: Dict[str, Any], 
+
+    def _verify_authorization(self, action: Dict[str, Any],
                             context: Dict[str, Any]) -> Dict[str, Any]:
         """Verify proper authorization exists for action"""
         if not context:
@@ -559,27 +559,27 @@ class EthicalChecker:
                 'reason': 'no_context_provided',
                 'required_authorization': 'written_consent_and_scope'
             }
-            
+
         # Check for authorization documentation
         authorization = context.get('authorization', {})
-        
+
         required_fields = ['assessment_id', 'client_consent', 'scope_definition', 'authorized_by']
         missing_fields = [field for field in required_fields if field not in authorization]
-        
+
         if missing_fields:
             return {
                 'authorized': False,
                 'reason': 'incomplete_authorization',
                 'missing_fields': missing_fields
             }
-            
+
         # Verify scope alignment
         if not self._action_within_authorized_scope(action, authorization):
             return {
                 'authorized': False,
                 'reason': 'action_outside_authorized_scope'
             }
-            
+
         return {
             'authorized': True,
             'authorization_verified': True,
@@ -605,7 +605,7 @@ class EmergencyStop:
         self.stopped_processes = []
         self.alert_sent = False
         self.lock = threading.Lock()
-        
+
         # Initialize emergency procedures
         self.emergency_procedures = {
             'ai_operations': self._stop_ai_operations,
@@ -614,11 +614,11 @@ class EmergencyStop:
             'network_operations': self._stop_network_operations,
             'file_operations': self._stop_file_operations
         }
-        
-    def trigger_emergency_stop(self, reason: str, triggered_by: str, 
+
+    def trigger_emergency_stop(self, reason: str, triggered_by: str,
                               evidence: Dict[str, Any] = None) -> Dict[str, Any]:
         """Trigger immediate emergency stop of all operations"""
-        
+
         with self.lock:
             if self.emergency_active:
                 return {
@@ -630,17 +630,17 @@ class EmergencyStop:
                         'timestamp': self.stop_timestamp
                     }
                 }
-                
+
             emergency_start = time.time()
-            
+
             # Set emergency state
             self.emergency_active = True
             self.stop_reason = reason
             self.stop_timestamp = datetime.now()
             self.triggered_by = triggered_by
-            
+
             stop_results = []
-            
+
             try:
                 # Execute emergency procedures in priority order
                 for system_name, stop_function in self.emergency_procedures.items():
@@ -649,12 +649,12 @@ class EmergencyStop:
                         stop_result = stop_function()
                         stop_result['system'] = system_name
                         stop_results.append(stop_result)
-                        
+
                         if stop_result['success']:
                             self.stopped_processes.append(system_name)
                         else:
                             print(f"WARNING: Failed to stop {system_name}: {stop_result.get('error', 'Unknown error')}")
-                            
+
                     except Exception as e:
                         error_result = {
                             'system': system_name,
@@ -663,18 +663,18 @@ class EmergencyStop:
                         }
                         stop_results.append(error_result)
                         print(f"ERROR: Exception stopping {system_name}: {e}")
-                        
+
                 # Create forensic evidence package
                 evidence_package = self._create_evidence_package(reason, evidence)
-                
+
                 # Send emergency alerts
                 alert_result = self._send_emergency_alerts(reason, triggered_by, evidence)
-                
+
                 # Log emergency stop
                 self._log_emergency_stop(reason, triggered_by, evidence, stop_results)
-                
+
                 emergency_duration = time.time() - emergency_start
-                
+
                 return {
                     'success': True,
                     'emergency_active': True,
@@ -689,7 +689,7 @@ class EmergencyStop:
                     'alert_sent': alert_result['success'],
                     'recovery_instructions': self._get_recovery_instructions()
                 }
-                
+
             except Exception as e:
                 return {
                     'success': False,
@@ -697,7 +697,7 @@ class EmergencyStop:
                     'partial_stop': True,
                     'stopped_systems': stop_results
                 }
-                
+
     def _stop_ai_operations(self) -> Dict[str, Any]:
         """Stop all AI processing operations"""
         try:
@@ -705,7 +705,7 @@ class EmergencyStop:
             # Stop LLM processing
             # Stop decision making
             # Stop learning systems
-            
+
             return {
                 'success': True,
                 'operations_stopped': [
@@ -718,7 +718,7 @@ class EmergencyStop:
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
-            
+
     def _stop_tool_execution(self) -> Dict[str, Any]:
         """Stop all security tool execution"""
         try:
@@ -726,7 +726,7 @@ class EmergencyStop:
             # Stop command execution
             # Halt workflow execution
             # Stop automation
-            
+
             return {
                 'success': True,
                 'operations_stopped': [
@@ -739,7 +739,7 @@ class EmergencyStop:
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
-            
+
     def _stop_network_operations(self) -> Dict[str, Any]:
         """Stop all network operations"""
         try:
@@ -747,7 +747,7 @@ class EmergencyStop:
             # Close network connections
             # Stop traffic capture
             # Halt data transmission
-            
+
             return {
                 'success': True,
                 'operations_stopped': [
@@ -760,11 +760,11 @@ class EmergencyStop:
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
-            
+
     def is_emergency_active(self) -> bool:
         """Check if emergency stop is currently active"""
         return self.emergency_active
-        
+
     def get_emergency_status(self) -> Dict[str, Any]:
         """Get current emergency status"""
         if not self.emergency_active:
@@ -772,7 +772,7 @@ class EmergencyStop:
                 'emergency_active': False,
                 'system_status': 'normal_operations'
             }
-            
+
         return {
             'emergency_active': True,
             'reason': self.stop_reason,
@@ -781,8 +781,8 @@ class EmergencyStop:
             'stopped_systems': self.stopped_processes,
             'duration_seconds': (datetime.now() - self.stop_timestamp).total_seconds()
         }
-        
-    def reset_emergency_stop(self, authorized_by: str, 
+
+    def reset_emergency_stop(self, authorized_by: str,
                            reset_reason: str) -> Dict[str, Any]:
         """Reset emergency stop (requires authorization)"""
         with self.lock:
@@ -791,7 +791,7 @@ class EmergencyStop:
                     'success': False,
                     'reason': 'no_emergency_active'
                 }
-                
+
             # Log reset action
             reset_log = {
                 'action': 'emergency_reset',
@@ -804,16 +804,16 @@ class EmergencyStop:
                     'duration': (datetime.now() - self.stop_timestamp).total_seconds()
                 }
             }
-            
+
             self._log_emergency_reset(reset_log)
-            
+
             # Reset emergency state
             self.emergency_active = False
             self.stop_reason = None
             self.stop_timestamp = None
             self.triggered_by = None
             self.stopped_processes = []
-            
+
             return {
                 'success': True,
                 'emergency_reset': True,
@@ -1017,86 +1017,86 @@ class AuditDatabaseManager:
         self.audit_db_path = Path(audit_db_path)
         self.db_path = self.audit_db_path / "audit.db"
         self.migration_path = Path(__file__).parent / "migrations"
-        
+
         # Ensure audit directory exists with secure permissions
         self.audit_db_path.mkdir(parents=True, exist_ok=True)
         os.chmod(self.audit_db_path, 0o750)  # Owner and group only
-        
+
         # Initialize database
         self.init_audit_database()
-        
+
         # Track last hash for blockchain-style integrity
         self.last_hash = self._get_last_hash()
-        
+
     def init_audit_database(self):
         """Initialize audit database with automatic migration"""
         try:
             # Check if database exists
             db_exists = self.db_path.exists()
-            
+
             with sqlite3.connect(self.db_path) as conn:
                 # Enable foreign keys and secure settings
                 conn.execute("PRAGMA foreign_keys = ON")
                 conn.execute("PRAGMA journal_mode = WAL")  # Write-Ahead Logging
                 conn.execute("PRAGMA synchronous = FULL")  # Ensure data integrity
-                
+
                 if not db_exists:
                     logging.info("Creating new audit database...")
                     self._run_migrations(conn)
                 else:
                     logging.info("Audit database exists, verifying schema...")
                     self._verify_schema(conn)
-                    
+
                 # Test database health
                 self._test_database_health(conn)
-                
+
                 # Set secure permissions on database file
                 if self.db_path.exists():
                     os.chmod(self.db_path, 0o640)  # Owner read/write, group read
-                    
+
             logging.info(f"Audit database initialized at: {self.db_path}")
             return True
-            
+
         except Exception as e:
             logging.error(f"Failed to initialize audit database: {e}")
             return False
-            
+
     def _run_migrations(self, conn: sqlite3.Connection):
         """Execute all audit migration files"""
         migration_files = sorted(self.migration_path.glob("*.sql"))
-        
+
         for migration_file in migration_files:
             logging.info(f"Running audit migration: {migration_file.name}")
-            
+
             with open(migration_file, 'r') as f:
                 migration_sql = f.read()
-                
+
             # Execute migration (handle multiple statements)
             conn.executescript(migration_sql)
-            
+
         conn.commit()
         logging.info(f"Completed {len(migration_files)} audit migrations")
-        
+
     def _verify_schema(self, conn: sqlite3.Connection):
         """Verify audit database schema is correct"""
         expected_tables = [
             'audit_activities', 'security_events', 'compliance_events',
             'forensic_evidence', 'emergency_actions', 'command_validations'
         ]
-        
+
         cursor = conn.execute("""
-            SELECT name FROM sqlite_master 
+            SELECT name FROM sqlite_master
             WHERE type='table' AND name NOT LIKE 'sqlite_%'
         """)
-        
+
         existing_tables = [row[0] for row in cursor.fetchall()]
-        
+
         for table in expected_tables:
             if table not in existing_tables:
                 logging.warning(f"Audit table '{table}' missing, re-running migrations")
                 self._run_migrations(conn)
                 break
-                
+
     def _test_database_health(self, conn: sqlite3.Connection):
         """Test audit database operations"""
         # Test each audit table
@@ -1104,16 +1104,16 @@ class AuditDatabaseManager:
             cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
             count = cursor.fetchone()[0]
             logging.info(f"Audit table '{table}': {count} records")
-            
+
     def log_audit_activity(self, activity: Dict[str, Any]) -> str:
         """Log activity with full audit trail and tamper protection"""
         audit_id = str(uuid.uuid4())
         timestamp = datetime.now().isoformat()
-        
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("PRAGMA foreign_keys = ON")
-                
+
                 # Prepare audit record
                 audit_record = {
                     'audit_id': audit_id,
@@ -1126,15 +1126,15 @@ class AuditDatabaseManager:
                     'compliance_metadata': json.dumps(activity.get('compliance_metadata', {})),
                     'log_level': activity.get('log_level', 'INFO')
                 }
-                
+
                 # Calculate integrity hash
                 integrity_hash = self._calculate_integrity_hash(audit_record)
                 audit_record['integrity_hash'] = integrity_hash
                 audit_record['previous_hash'] = self.last_hash
-                
+
                 # Insert audit record
                 conn.execute('''
-                    INSERT INTO audit_activities 
+                    INSERT INTO audit_activities
                     (audit_id, timestamp, activity_type, activity_data, user_context,
                      system_context, security_context, compliance_metadata,
                      integrity_hash, previous_hash, log_level)
@@ -1147,30 +1147,30 @@ class AuditDatabaseManager:
                     audit_record['integrity_hash'], audit_record['previous_hash'],
                     audit_record['log_level']
                 ))
-                
+
                 # Update last hash for next record
                 self.last_hash = integrity_hash
-                
+
                 conn.commit()
                 return audit_id
-                
+
         except Exception as e:
             logging.error(f"Failed to log audit activity: {e}")
             # Emergency fallback logging
             self._emergency_log_fallback(activity, audit_id, str(e))
             return audit_id
-            
+
     def log_security_event(self, event: Dict[str, Any], audit_id: str = None) -> str:
         """Log security event with correlation to audit activity"""
         event_id = str(uuid.uuid4())
-        
+
         # Create audit activity if not provided
         if not audit_id:
             audit_id = self.log_audit_activity({
                 'type': 'security_event',
                 'security_event': event
             })
-            
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute('''
@@ -1189,25 +1189,25 @@ class AuditDatabaseManager:
                     event.get('evidence_collected', False),
                     json.dumps(event.get('response_actions', []))
                 ))
-                
+
                 conn.commit()
                 return event_id
-                
+
         except Exception as e:
             logging.error(f"Failed to log security event: {e}")
             return event_id
-            
+
     def log_command_validation(self, validation: Dict[str, Any], audit_id: str = None) -> str:
         """Log command validation result"""
         validation_id = str(uuid.uuid4())
-        
+
         # Create audit activity if not provided
         if not audit_id:
             audit_id = self.log_audit_activity({
                 'type': 'command_validation',
                 'validation': validation
             })
-            
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute('''
@@ -1230,90 +1230,90 @@ class AuditDatabaseManager:
                     json.dumps(validation.get('compliance_analysis', {})),
                     validation.get('validation_time_ms', 0)
                 ))
-                
+
                 conn.commit()
                 return validation_id
-                
+
         except Exception as e:
             logging.error(f"Failed to log command validation: {e}")
             return validation_id
-            
-    def get_audit_trail(self, start_time: str = None, end_time: str = None, 
-                       activity_types: List[str] = None, 
+
+    def get_audit_trail(self, start_time: str = None, end_time: str = None,
+                       activity_types: List[str] = None,
                        limit: int = 1000) -> List[Dict[str, Any]]:
         """Retrieve audit trail with filtering"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                
+
                 query = "SELECT * FROM audit_activities WHERE 1=1"
                 params = []
-                
+
                 if start_time:
                     query += " AND timestamp >= ?"
                     params.append(start_time)
-                    
+
                 if end_time:
                     query += " AND timestamp <= ?"
                     params.append(end_time)
-                    
+
                 if activity_types:
                     placeholders = ','.join(['?' for _ in activity_types])
                     query += f" AND activity_type IN ({placeholders})"
                     params.extend(activity_types)
-                    
+
                 query += " ORDER BY timestamp DESC"
-                
+
                 if limit:
                     query += " LIMIT ?"
                     params.append(limit)
-                    
+
                 cursor = conn.execute(query, params)
                 rows = cursor.fetchall()
-                
+
                 # Convert rows to dictionaries and verify integrity
                 audit_records = []
                 for row in rows:
                     record = dict(row)
-                    
+
                     # Verify record integrity
                     if self._verify_record_integrity(record):
                         audit_records.append(record)
                     else:
                         # Log integrity violation
                         logging.error(f"Audit integrity violation detected for record {record.get('audit_id')}")
-                        
+
                 return audit_records
-                
+
         except Exception as e:
             logging.error(f"Failed to retrieve audit trail: {e}")
             return []
-            
+
     def _calculate_integrity_hash(self, record: Dict[str, Any]) -> str:
         """Calculate SHA-256 integrity hash for audit record"""
         # Remove hash fields for calculation
-        record_copy = {k: v for k, v in record.items() 
+        record_copy = {k: v for k, v in record.items()
                       if k not in ['integrity_hash', 'previous_hash']}
-        
+
         # Create deterministic string representation
         record_string = json.dumps(record_copy, sort_keys=True, default=str)
-        
+
         # Calculate SHA-256 hash
         return hashlib.sha256(record_string.encode('utf-8')).hexdigest()
-        
+
     def _verify_record_integrity(self, record: Dict[str, Any]) -> bool:
         """Verify integrity hash of audit record"""
         try:
             stored_hash = record.get('integrity_hash')
             if not stored_hash:
                 return False
-                
+
             calculated_hash = self._calculate_integrity_hash(record)
             return stored_hash == calculated_hash
-            
+
         except Exception:
             return False
-            
+
     def _get_last_hash(self) -> Optional[str]:
         """Get hash of most recent audit record"""
         try:
@@ -1323,39 +1323,39 @@ class AuditDatabaseManager:
                 )
                 result = cursor.fetchone()
                 return result[0] if result else None
-                
+
         except Exception:
             return None
-            
+
     def get_database_stats(self) -> Dict[str, Any]:
         """Get comprehensive audit database statistics"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 stats = {}
-                
+
                 # Table counts
                 tables = ['audit_activities', 'security_events', 'compliance_events',
                          'forensic_evidence', 'emergency_actions', 'command_validations']
-                
+
                 for table in tables:
                     cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
                     stats[f"{table}_count"] = cursor.fetchone()[0]
-                    
+
                 # Database size
                 stats['database_size_bytes'] = self.db_path.stat().st_size
                 stats['database_path'] = str(self.db_path)
-                
+
                 # Recent activity
                 cursor = conn.execute("""
-                    SELECT activity_type, COUNT(*) as count 
-                    FROM audit_activities 
+                    SELECT activity_type, COUNT(*) as count
+                    FROM audit_activities
                     WHERE timestamp >= datetime('now', '-1 day')
                     GROUP BY activity_type
                 """)
                 stats['recent_activity'] = {row[0]: row[1] for row in cursor.fetchall()}
-                
+
                 return stats
-                
+
         except Exception as e:
             return {'error': str(e)}
 EOF
@@ -1373,7 +1373,7 @@ _audit_db_manager = None
 def get_audit_database_manager(audit_path: str = None) -> AuditDatabaseManager:
     """Get singleton audit database manager"""
     global _audit_db_manager
-    
+
     if _audit_db_manager is None:
         if audit_path is None:
             # Auto-determine audit path
@@ -1381,9 +1381,9 @@ def get_audit_database_manager(audit_path: str = None) -> AuditDatabaseManager:
                 audit_path = "/var/log/kali-ai-os/audit"
             else:
                 audit_path = "/tmp/kali-ai-os-audit"
-                
+
         _audit_db_manager = AuditDatabaseManager(audit_path)
-        
+
     return _audit_db_manager
 
 def initialize_audit_database(audit_path: str = None, force_reset: bool = False) -> bool:
@@ -1395,15 +1395,15 @@ def initialize_audit_database(audit_path: str = None, force_reset: bool = False)
             if db_path.exists():
                 db_path.unlink()
                 logging.info("Existing audit database removed for reset")
-                
+
         audit_manager = get_audit_database_manager(audit_path)
-        
+
         # Test audit database operations
         stats = audit_manager.get_database_stats()
         logging.info(f"Audit database ready: {stats}")
-        
+
         return True
-        
+
     except Exception as e:
         logging.error(f"Failed to initialize audit database: {e}")
         return False
@@ -1413,13 +1413,13 @@ def check_audit_database_health() -> Dict[str, Any]:
     try:
         audit_manager = get_audit_database_manager()
         stats = audit_manager.get_database_stats()
-        
+
         return {
             'healthy': True,
             'statistics': stats,
             'message': 'Audit database is healthy and secure'
         }
-        
+
     except Exception as e:
         return {
             'healthy': False,
@@ -1446,20 +1446,20 @@ from .database.connection import get_audit_database_manager, initialize_audit_da
 class AuditLogger:
     def __init__(self, audit_log_path: str = "/var/log/kali-ai-os/audit"):
         self.audit_log_path = Path(audit_log_path)
-        
+
         # Initialize audit database automatically
         if not initialize_audit_database(str(self.audit_log_path)):
             raise Exception("Failed to initialize audit database")
-            
+
         self.audit_db = get_audit_database_manager(str(self.audit_log_path))
-        
+
         # Also maintain file-based logs for redundancy
         self.audit_log_path.mkdir(parents=True, exist_ok=True)
         self.activity_log = self.audit_log_path / "activity.log"
         self.security_log = self.audit_log_path / "security.log"
         self.compliance_log = self.audit_log_path / "compliance.log"
         self.forensic_log = self.audit_log_path / "forensic.log"
-        
+
         # Audit configuration
         self.audit_config = {
             'integrity_protection': True,
@@ -1468,17 +1468,17 @@ class AuditLogger:
             'retention_days': 365,
             'forensic_mode': True
         }
-        
+
         # Chain of custody tracking
         self.custody_chain = []
-        
-    def log_activity(self, activity: Dict[str, Any], 
+
+    def log_activity(self, activity: Dict[str, Any],
                     log_type: str = 'activity') -> str:
         """Log activity with complete audit trail"""
-        
+
         audit_id = self._generate_audit_id()
         timestamp = datetime.now()
-        
+
         try:
             # Create comprehensive audit record
             audit_record = {
@@ -1492,28 +1492,28 @@ class AuditLogger:
                 'security_context': self._capture_security_context(),
                 'compliance_metadata': self._generate_compliance_metadata(activity)
             }
-            
+
             # Add integrity protection
             if self.audit_config['integrity_protection']:
                 audit_record['integrity_hash'] = self._calculate_integrity_hash(audit_record)
                 audit_record['previous_hash'] = self._get_previous_hash(log_type)
                 audit_record['hash_algorithm'] = 'SHA-256'
-                
+
             # Add chain of custody entry
             custody_entry = self._create_custody_entry(audit_record)
             self.custody_chain.append(custody_entry)
             audit_record['custody_id'] = custody_entry['custody_id']
-            
+
             # Write to appropriate log file
             log_file = self._get_log_file(log_type)
             self._write_audit_record(log_file, audit_record)
-            
+
             # Real-time alerting for critical events
             if self._is_critical_event(activity):
                 self._send_real_time_alert(audit_record)
-                
+
             return audit_id
-            
+
         except Exception as e:
             # Emergency logging fallback
             fallback_record = {
@@ -1523,10 +1523,10 @@ class AuditLogger:
                 'exception': str(e),
                 'activity_summary': str(activity)[:200]
             }
-            
+
             self._emergency_log(fallback_record)
             return audit_id
-            
+
     def log_security_event(self, event: Dict[str, Any]) -> str:
         """Log security-specific events"""
         enhanced_event = {
@@ -1536,9 +1536,9 @@ class AuditLogger:
             'threat_indicators': self._extract_threat_indicators(event),
             'incident_correlation': self._correlate_with_incidents(event)
         }
-        
+
         return self.log_activity(enhanced_event, 'security')
-        
+
     def log_compliance_event(self, event: Dict[str, Any]) -> str:
         """Log compliance-related events"""
         enhanced_event = {
@@ -1548,13 +1548,13 @@ class AuditLogger:
             'compliance_status': self._check_compliance_status(event),
             'regulatory_requirements': self._identify_regulatory_requirements(event)
         }
-        
+
         return self.log_activity(enhanced_event, 'compliance')
-        
+
     def collect_forensic_evidence(self, incident: Dict[str, Any]) -> str:
         """Collect forensic evidence for incidents"""
         evidence_id = self._generate_evidence_id()
-        
+
         forensic_package = {
             'evidence_id': evidence_id,
             'incident_id': incident.get('incident_id'),
@@ -1571,10 +1571,10 @@ class AuditLogger:
                 'collected_by': 'automated_system'
             }
         }
-        
+
         # Calculate evidence integrity hash
         forensic_package['evidence_hash'] = self._calculate_evidence_hash(forensic_package)
-        
+
         # Create chain of custody
         custody_record = {
             'evidence_id': evidence_id,
@@ -1583,37 +1583,37 @@ class AuditLogger:
             'integrity_verified': True,
             'custody_transfers': []
         }
-        
+
         forensic_package['chain_of_custody'] = custody_record
-        
+
         # Store forensic evidence
         self.log_activity(forensic_package, 'forensic')
-        
+
         return evidence_id
-        
-    def get_audit_trail(self, start_time: datetime = None, 
+
+    def get_audit_trail(self, start_time: datetime = None,
                        end_time: datetime = None,
                        activity_types: List[str] = None,
                        limit: int = 1000) -> List[Dict[str, Any]]:
         """Retrieve audit trail with filtering"""
         audit_records = []
-        
+
         try:
             # Read from all log files
-            for log_file in [self.activity_log, self.security_log, 
+            for log_file in [self.activity_log, self.security_log,
                            self.compliance_log, self.forensic_log]:
                 if log_file.exists():
-                    records = self._read_log_file(log_file, start_time, end_time, 
+                    records = self._read_log_file(log_file, start_time, end_time,
                                                 activity_types, limit)
                     audit_records.extend(records)
-                    
+
             # Sort by timestamp
             audit_records.sort(key=lambda x: x.get('timestamp', ''))
-            
+
             # Apply limit
             if limit:
                 audit_records = audit_records[:limit]
-                
+
             # Verify integrity of returned records
             verified_records = []
             for record in audit_records:
@@ -1626,28 +1626,28 @@ class AuditLogger:
                         'record_id': record.get('audit_id'),
                         'violation_type': 'hash_mismatch'
                     })
-                    
+
             return verified_records
-            
+
         except Exception as e:
             self.log_security_event({
                 'type': 'audit_trail_access_error',
                 'error': str(e)
             })
             return []
-            
+
     def _calculate_integrity_hash(self, record: Dict[str, Any]) -> str:
         """Calculate SHA-256 integrity hash for audit record"""
         # Remove hash fields for calculation
-        record_copy = {k: v for k, v in record.items() 
+        record_copy = {k: v for k, v in record.items()
                       if k not in ['integrity_hash', 'previous_hash']}
-        
+
         # Create deterministic string representation
         record_string = json.dumps(record_copy, sort_keys=True, default=str)
-        
+
         # Calculate SHA-256 hash
         return hashlib.sha256(record_string.encode('utf-8')).hexdigest()
-        
+
     def _capture_system_context(self) -> Dict[str, Any]:
         """Capture comprehensive system context"""
         return {
@@ -1699,7 +1699,7 @@ class ThreatDetector:
                 r'chkconfig.*on'
             ]
         }
-        
+
         self.behavioral_indicators = {
             'unusual_file_access': {
                 'patterns': ['/etc/passwd', '/etc/shadow', '/.ssh/', '/home/*/.ssh/'],
@@ -1716,15 +1716,15 @@ class ThreatDetector:
                 'time_window': 300  # Within 5 minutes
             }
         }
-        
+
         # Track activity for behavioral analysis
         self.activity_history = []
         self.threat_scores = {}
-        
-    def analyze_command_threat(self, command: str, 
+
+    def analyze_command_threat(self, command: str,
                               context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Analyze command for threat indicators"""
-        
+
         threat_analysis = {
             'command': command,
             'timestamp': datetime.now().isoformat(),
@@ -1733,7 +1733,7 @@ class ThreatDetector:
             'risk_score': 0.0,
             'indicators': []
         }
-        
+
         try:
             # Check against known threat patterns
             for threat_type, patterns in self.threat_patterns.items():
@@ -1746,18 +1746,18 @@ class ThreatDetector:
                             'threat_category': threat_type,
                             'matched_pattern': pattern
                         })
-                        
+
             # Calculate risk score
             base_risk = len(threat_analysis['threat_types']) * 0.3
-            
+
             # Add risk for specific threat types
             high_risk_threats = ['privilege_escalation', 'data_exfiltration']
             for threat_type in threat_analysis['threat_types']:
                 if threat_type in high_risk_threats:
                     base_risk += 0.4
-                    
+
             threat_analysis['risk_score'] = min(1.0, base_risk)
-            
+
             # Determine risk level
             if threat_analysis['risk_score'] >= 0.8:
                 threat_analysis['risk_level'] = 'CRITICAL'
@@ -1767,7 +1767,7 @@ class ThreatDetector:
                 threat_analysis['risk_level'] = 'MEDIUM'
             else:
                 threat_analysis['risk_level'] = 'LOW'
-                
+
             # Add to activity history for behavioral analysis
             self.activity_history.append({
                 'command': command,
@@ -1775,15 +1775,15 @@ class ThreatDetector:
                 'threat_score': threat_analysis['risk_score'],
                 'threat_types': threat_analysis['threat_types']
             })
-            
+
             # Behavioral analysis
             behavioral_threats = self._analyze_behavioral_patterns()
             if behavioral_threats:
                 threat_analysis['behavioral_threats'] = behavioral_threats
                 threat_analysis['threat_detected'] = True
-                
+
             return threat_analysis
-            
+
         except Exception as e:
             return {
                 'command': command,
@@ -1792,18 +1792,18 @@ class ThreatDetector:
                 'risk_level': 'HIGH',
                 'analysis_failed': True
             }
-            
+
     def _analyze_behavioral_patterns(self) -> List[Dict[str, Any]]:
         """Analyze behavioral patterns for threats"""
         behavioral_threats = []
         current_time = datetime.now()
-        
+
         # Check for rapid command execution
         recent_commands = [
             activity for activity in self.activity_history
             if (current_time - activity['timestamp']).total_seconds() < 300
         ]
-        
+
         if len(recent_commands) > 50:
             behavioral_threats.append({
                 'type': 'rapid_execution',
@@ -1811,7 +1811,7 @@ class ThreatDetector:
                 'command_count': len(recent_commands),
                 'time_window': 300
             })
-            
+
         # Check for escalating threat scores
         if len(recent_commands) >= 5:
             avg_threat_score = sum(cmd['threat_score'] for cmd in recent_commands) / len(recent_commands)
@@ -1821,7 +1821,7 @@ class ThreatDetector:
                     'description': 'Increasing threat level in recent activities',
                     'average_threat_score': avg_threat_score
                 })
-                
+
         return behavioral_threats
 ```
 
@@ -1835,13 +1835,13 @@ async def test_complete_safety_framework():
     emergency_stop = EmergencyStop()
     audit_logger = AuditLogger()
     threat_detector = ThreatDetector()
-    
+
     # 2. Test dangerous command blocking
     dangerous_cmd = "rm -rf /"
     validation_result = validator.validate_command(dangerous_cmd)
     assert validation_result['allowed'] == False
     assert validation_result['risk_level'] == 'CRITICAL'
-    
+
     # 3. Test ethical violation detection
     unethical_action = {
         'action': 'unauthorized_data_exfiltration',
@@ -1849,7 +1849,7 @@ async def test_complete_safety_framework():
     }
     ethical_result = ethical_checker.check_action_ethics(unethical_action)
     assert ethical_result['ethical_violation'] == True
-    
+
     # 4. Test emergency stop
     emergency_result = emergency_stop.trigger_emergency_stop(
         "Malicious activity detected",
@@ -1857,7 +1857,7 @@ async def test_complete_safety_framework():
     )
     assert emergency_result['success'] == True
     assert emergency_stop.is_emergency_active() == True
-    
+
     # 5. Test audit logging
     audit_id = audit_logger.log_security_event({
         'type': 'blocked_dangerous_command',
@@ -1865,18 +1865,18 @@ async def test_complete_safety_framework():
         'block_reason': 'system_destruction_attempt'
     })
     assert audit_id is not None
-    
+
     # 6. Test threat detection
     threat_analysis = threat_detector.analyze_command_threat("sudo su -")
     assert threat_analysis['threat_detected'] == True
     assert 'privilege_escalation' in threat_analysis['threat_types']
-    
+
     print("Safety framework working correctly!")
 
 # Performance testing
 def test_safety_performance():
     validator = CommandValidator()
-    
+
     # Test validation speed
     commands = [
         "nmap -sS example.com",
@@ -1884,12 +1884,12 @@ def test_safety_performance():
         "rm -rf /tmp/test",
         "sudo apt update"
     ] * 100
-    
+
     start_time = time.time()
     for cmd in commands:
         result = validator.validate_command(cmd)
     validation_time = time.time() - start_time
-    
+
     print(f"Validated 400 commands in {validation_time:.2f}s")
     assert validation_time < 2.0  # Should validate 400 commands in under 2 seconds
 ```
@@ -2102,7 +2102,7 @@ sqlite3 /var/log/kali-ai-os/audit/audit.db "PRAGMA integrity_check;"
 # Check for tampered records (this will show records with hash mismatches)
 sqlite3 /var/log/kali-ai-os/audit/audit.db "
 SELECT audit_id, timestamp, activity_type, 'INTEGRITY_VIOLATION' as status
-FROM audit_activities 
+FROM audit_activities
 WHERE integrity_hash != 'recalculated_hash';
 "
 
@@ -2134,7 +2134,7 @@ df -h /var/log/
 
 # Test manual audit insertion
 sqlite3 /var/log/kali-ai-os/audit/audit.db "
-INSERT INTO audit_activities (audit_id, timestamp, activity_type, activity_data, integrity_hash) 
+INSERT INTO audit_activities (audit_id, timestamp, activity_type, activity_data, integrity_hash)
 VALUES ('test-' || datetime('now'), datetime('now'), 'manual_test', '{\"test\": true}', 'test_hash');
 "
 
@@ -2164,9 +2164,9 @@ print(f'Security event logged: {event_id}')
 ```bash
 # Check audit trail manually
 sqlite3 /var/log/kali-ai-os/audit/audit.db "
-SELECT audit_id, timestamp, activity_type, log_level 
-FROM audit_activities 
-ORDER BY timestamp DESC 
+SELECT audit_id, timestamp, activity_type, log_level
+FROM audit_activities
+ORDER BY timestamp DESC
 LIMIT 10;
 "
 
@@ -2279,35 +2279,35 @@ fi
 # Check table counts
 echo "📈 Audit table statistics:"
 sqlite3 "$AUDIT_DB_PATH" "
-SELECT 
+SELECT
     'audit_activities: ' || COUNT(*) FROM audit_activities
-UNION ALL SELECT 
+UNION ALL SELECT
     'security_events: ' || COUNT(*) FROM security_events
-UNION ALL SELECT 
+UNION ALL SELECT
     'compliance_events: ' || COUNT(*) FROM compliance_events
-UNION ALL SELECT 
+UNION ALL SELECT
     'forensic_evidence: ' || COUNT(*) FROM forensic_evidence
-UNION ALL SELECT 
+UNION ALL SELECT
     'emergency_actions: ' || COUNT(*) FROM emergency_actions
-UNION ALL SELECT 
+UNION ALL SELECT
     'command_validations: ' || COUNT(*) FROM command_validations;
 "
 
 # Check recent audit activity
 echo "⏰ Recent audit activities:"
 sqlite3 "$AUDIT_DB_PATH" "
-SELECT 
+SELECT
     datetime(timestamp, 'localtime') as local_time,
     activity_type,
     log_level
-FROM audit_activities 
-ORDER BY timestamp DESC 
+FROM audit_activities
+ORDER BY timestamp DESC
 LIMIT 5;
 "
 
 # Check for any integrity violations
 VIOLATIONS=$(sqlite3 "$AUDIT_DB_PATH" "
-SELECT COUNT(*) FROM audit_activities 
+SELECT COUNT(*) FROM audit_activities
 WHERE integrity_hash = 'tampered' OR integrity_hash IS NULL;
 ")
 if [ "$VIOLATIONS" -eq 0 ]; then

@@ -46,26 +46,26 @@ def test_nmap_basic_scan():
     """Test nmap integration works"""
     # Input: target="example.com", scan_type="basic"
     # Expected: Port scan results with open ports
-    
+
 def test_nikto_web_scan():
     """Test nikto web vulnerability scanning"""
     # Input: target="https://example.com"
     # Expected: Web vulnerability findings
-    
+
 def test_burpsuite_gui_automation():
     """Test Burp Suite GUI automation"""
     # Input: target="https://example.com", mode="proxy"
     # Expected: Burp Suite configured and running
-    
+
 def test_tool_discovery():
     """Test automatic discovery of installed tools"""
     # Expected: List of available security tools
-    
+
 def test_multi_tool_workflow():
     """Test coordinated execution of multiple tools"""
     # Input: ["nmap", "nikto", "dirb"] for target
     # Expected: Results from all three tools
-    
+
 def test_unknown_tool_learning():
     """Test system learns new tools automatically"""
     # Input: Custom security script
@@ -86,7 +86,7 @@ class UniversalToolAdapter:
         self.command_generator = CommandGenerator()
         self.output_parser = OutputParser()
         self.execution_engine = ExecutionEngine()
-        
+
     async def execute_tool(self, tool_name: str, target: str, options: Dict = None):
         """Execute any security tool"""
         try:
@@ -95,29 +95,29 @@ class UniversalToolAdapter:
             if not tool_config:
                 # Try to learn tool dynamically
                 tool_config = await self._learn_new_tool(tool_name)
-                
+
             # 2. Generate appropriate command/workflow
             if tool_config['type'] == 'cli':
                 command = self.command_generator.generate_cli_command(
                     tool_name, target, options, tool_config
                 )
                 result = await self.execution_engine.execute_cli(command)
-                
+
             elif tool_config['type'] == 'gui':
                 workflow = self.command_generator.generate_gui_workflow(
                     tool_name, target, options, tool_config
                 )
                 result = await self.execution_engine.execute_gui(workflow)
-                
+
             elif tool_config['type'] == 'api':
                 api_call = self.command_generator.generate_api_call(
                     tool_name, target, options, tool_config
                 )
                 result = await self.execution_engine.execute_api(api_call)
-                
+
             # 3. Parse and format results
             parsed_results = self.output_parser.parse(tool_name, result['output'])
-            
+
             return {
                 'success': True,
                 'tool': tool_name,
@@ -127,7 +127,7 @@ class UniversalToolAdapter:
                 'parsed_results': parsed_results,
                 'execution_time': result['execution_time']
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
@@ -142,7 +142,7 @@ class ToolRegistry:
         self.tools = {}
         self._load_builtin_tools()
         self._discover_installed_tools()
-        
+
     def _load_builtin_tools(self):
         """Load configurations for known security tools"""
         self.tools.update({
@@ -163,7 +163,7 @@ class ToolRegistry:
             },
             'nikto': {
                 'executable': 'nikto',
-                'type': 'cli', 
+                'type': 'cli',
                 'category': 'web_scanner',
                 'common_args': {
                     'host': ['-h'],
@@ -195,11 +195,11 @@ import time
 class CLIExecutor:
     def __init__(self):
         self.active_processes = {}
-        
+
     async def execute_command(self, command: List[str], timeout: int = 300):
         """Execute CLI command with timeout and monitoring"""
         start_time = time.time()
-        
+
         try:
             # Start process
             process = await asyncio.create_subprocess_exec(
@@ -207,11 +207,11 @@ class CLIExecutor:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            
+
             # Store process for monitoring/cancellation
             process_id = f"{command[0]}_{start_time}"
             self.active_processes[process_id] = process
-            
+
             # Wait for completion with timeout
             try:
                 stdout, stderr = await asyncio.wait_for(
@@ -221,12 +221,12 @@ class CLIExecutor:
                 process.kill()
                 await process.wait()
                 raise Exception(f"Command timed out after {timeout} seconds")
-            
+
             execution_time = time.time() - start_time
-            
+
             # Clean up
             del self.active_processes[process_id]
-            
+
             return {
                 'success': process.returncode == 0,
                 'command': ' '.join(command),
@@ -235,7 +235,7 @@ class CLIExecutor:
                 'return_code': process.returncode,
                 'execution_time': execution_time
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
@@ -251,17 +251,17 @@ class CLIExecutor:
 class GUIExecutor:
     def __init__(self, desktop_controller):
         self.desktop = desktop_controller
-        
+
     async def execute_burpsuite_workflow(self, target: str, workflow_type: str):
         """Execute Burp Suite GUI workflow"""
         try:
             # 1. Launch Burp Suite (if not running)
             if not self._is_burpsuite_running():
                 await self._launch_burpsuite()
-                
+
             # 2. Wait for application to be ready
             await self._wait_for_burpsuite_ready()
-            
+
             # 3. Execute specific workflow
             if workflow_type == 'proxy_setup':
                 result = await self._setup_burp_proxy(target)
@@ -269,7 +269,7 @@ class GUIExecutor:
                 result = await self._run_active_scan(target)
             elif workflow_type == 'spider':
                 result = await self._run_spider(target)
-                
+
             return {
                 'success': True,
                 'tool': 'burpsuite',
@@ -277,40 +277,40 @@ class GUIExecutor:
                 'target': target,
                 'result': result
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
                 'tool': 'burpsuite',
                 'error': str(e)
             }
-    
+
     async def _launch_burpsuite(self):
         """Launch Burp Suite application"""
         # Click application launcher or use command
         await self.desktop.run_command('burpsuite')
-        
+
     async def _setup_burp_proxy(self, target: str):
         """Configure Burp Suite proxy for target"""
         # 1. Find and click Proxy tab
         proxy_tab = await self.desktop.find_element('templates/burpsuite/proxy_tab.png')
         await self.desktop.click(proxy_tab['location'])
-        
+
         # 2. Configure target scope
         options_button = await self.desktop.find_element('templates/burpsuite/options.png')
         await self.desktop.click(options_button['location'])
-        
+
         # 3. Add target to scope
         add_button = await self.desktop.find_element('templates/burpsuite/add_scope.png')
         await self.desktop.click(add_button['location'])
-        
+
         # 4. Enter target URL
         await self.desktop.type_text(target)
-        
+
         # 5. Start proxy
         start_button = await self.desktop.find_element('templates/burpsuite/start_proxy.png')
         await self.desktop.click(start_button['location'])
-        
+
         return {'proxy_configured': True, 'target': target}
 ```
 
@@ -329,7 +329,7 @@ class OutputParser:
             'dirb': self._parse_dirb_output,
             'sqlmap': self._parse_sqlmap_output
         }
-        
+
     def parse(self, tool_name: str, raw_output: str):
         """Parse tool output into structured format"""
         if tool_name in self.parsers:
@@ -337,7 +337,7 @@ class OutputParser:
         else:
             # Use AI to parse unknown tool output
             return self._ai_parse_output(tool_name, raw_output)
-            
+
     def _parse_nmap_output(self, output: str):
         """Parse nmap scan results"""
         results = {
@@ -347,18 +347,18 @@ class OutputParser:
             'services': [],
             'os_info': None
         }
-        
+
         # Parse hosts and ports
         host_pattern = r'Nmap scan report for (.+)'
         port_pattern = r'(\d+)/(tcp|udp)\s+(open|closed|filtered)\s*(.+)?'
-        
+
         current_host = None
         for line in output.split('\n'):
             host_match = re.search(host_pattern, line)
             if host_match:
                 current_host = host_match.group(1).strip()
                 results['hosts'].append(current_host)
-                
+
             port_match = re.search(port_pattern, line)
             if port_match and current_host:
                 port_info = {
@@ -368,13 +368,13 @@ class OutputParser:
                     'state': port_match.group(3),
                     'service': port_match.group(4).strip() if port_match.group(4) else ''
                 }
-                
+
                 if port_info['state'] == 'open':
                     results['open_ports'].append(port_info)
                     results['services'].append(port_info)
-                    
+
         return results
-        
+
     def _parse_nikto_output(self, output: str):
         """Parse nikto web scan results"""
         results = {
@@ -383,13 +383,13 @@ class OutputParser:
             'vulnerabilities': [],
             'findings': []
         }
-        
+
         # Extract target
         target_pattern = r'Target IP:\s*(.+)'
         target_match = re.search(target_pattern, output)
         if target_match:
             results['target'] = target_match.group(1).strip()
-            
+
         # Extract findings
         finding_pattern = r'\+\s*(.+)'
         for line in output.split('\n'):
@@ -397,12 +397,12 @@ class OutputParser:
             if finding_match:
                 finding = finding_match.group(1).strip()
                 results['findings'].append(finding)
-                
+
                 # Classify as vulnerability if it contains certain keywords
                 vuln_keywords = ['vulnerable', 'security', 'exploit', 'injection', 'xss']
                 if any(keyword in finding.lower() for keyword in vuln_keywords):
                     results['vulnerabilities'].append(finding)
-                    
+
         return results
 ```
 
@@ -412,40 +412,40 @@ class OutputParser:
 class ScanWorkflows:
     def __init__(self, tool_adapter):
         self.tools = tool_adapter
-        
+
     async def comprehensive_web_scan(self, target: str):
         """Execute comprehensive web application scan"""
         results = {}
-        
+
         try:
             # 1. Network reconnaissance
             print(f"Starting network scan of {target}...")
             results['nmap'] = await self.tools.execute_tool(
                 'nmap', target, {'scan_type': 'web_ports', 'timing': 'normal'}
             )
-            
+
             # 2. Web server enumeration
             print(f"Starting web vulnerability scan...")
             results['nikto'] = await self.tools.execute_tool(
                 'nikto', f"https://{target}"
             )
-            
+
             # 3. Directory enumeration
             print(f"Starting directory enumeration...")
             results['dirb'] = await self.tools.execute_tool(
                 'dirb', f"https://{target}"
             )
-            
+
             # 4. SSL/TLS analysis
             if self._has_https(results['nmap']):
                 print(f"Starting SSL analysis...")
                 results['sslscan'] = await self.tools.execute_tool(
                     'sslscan', target
                 )
-                
+
             # 5. Aggregate and analyze results
             aggregated = self._aggregate_results(results)
-            
+
             return {
                 'success': True,
                 'target': target,
@@ -453,7 +453,7 @@ class ScanWorkflows:
                 'aggregated_findings': aggregated,
                 'workflow': 'comprehensive_web_scan'
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
@@ -461,7 +461,7 @@ class ScanWorkflows:
                 'error': str(e),
                 'partial_results': results
             }
-            
+
     def _aggregate_results(self, results):
         """Combine results from multiple tools"""
         aggregated = {
@@ -471,20 +471,20 @@ class ScanWorkflows:
             'ssl_issues': [],
             'recommendations': []
         }
-        
+
         # Combine open ports from nmap
         if 'nmap' in results and results['nmap']['success']:
             aggregated['open_ports'] = results['nmap']['parsed_results']['open_ports']
-            
+
         # Combine vulnerabilities from nikto
         if 'nikto' in results and results['nikto']['success']:
             aggregated['vulnerabilities'].extend(
                 results['nikto']['parsed_results']['vulnerabilities']
             )
-            
+
         # Generate recommendations
         aggregated['recommendations'] = self._generate_recommendations(aggregated)
-        
+
         return aggregated
 ```
 
@@ -494,23 +494,23 @@ class ScanWorkflows:
 async def test_complete_tool_integration():
     # 1. Initialize tool adapter
     adapter = UniversalToolAdapter()
-    
+
     # 2. Test individual tools
     nmap_result = await adapter.execute_tool('nmap', 'scanme.nmap.org')
     assert nmap_result['success'] == True
     assert len(nmap_result['parsed_results']['open_ports']) > 0
-    
+
     # 3. Test workflow coordination
     workflow = ScanWorkflows(adapter)
     web_scan_result = await workflow.comprehensive_web_scan('scanme.nmap.org')
     assert web_scan_result['success'] == True
-    
+
     # 4. Test GUI automation
     burp_result = await adapter.execute_tool(
         'burpsuite', 'https://example.com', {'workflow': 'proxy_setup'}
     )
     assert burp_result['success'] == True
-    
+
     print("Tool integration system working correctly!")
 
 # Performance testing
@@ -615,25 +615,25 @@ class UniversalToolAdapter:
         self.command_generator = CommandGenerator()
         self.output_parser = OutputParser()
         self.execution_engine = ExecutionEngine()
-        
-    async def execute_tool(self, tool_name: str, target: str, 
+
+    async def execute_tool(self, tool_name: str, target: str,
                           options: Dict = None) -> Dict[str, Any]:
         """Execute any security tool"""
         try:
             # Get tool configuration
             tool_config = self.tool_registry.get_tool_config(tool_name)
-            
+
             # Generate command
             command = self.command_generator.generate(
                 tool_name, target, options, tool_config
             )
-            
+
             # Execute command
             result = await self.execution_engine.execute(command)
-            
+
             # Parse output
             parsed_output = self.output_parser.parse(tool_name, result['output'])
-            
+
             return {
                 'success': True,
                 'tool': tool_name,
@@ -642,7 +642,7 @@ class UniversalToolAdapter:
                 'findings': parsed_output,
                 'execution_time': result['execution_time']
             }
-            
+
         except Exception as e:
             return {
                 'success': False,
@@ -658,7 +658,7 @@ class ToolRegistry:
     def __init__(self):
         self.tools = {}
         self.load_builtin_tools()
-        
+
     def load_builtin_tools(self):
         """Load configurations for built-in Kali tools"""
         self.tools.update({
@@ -692,32 +692,32 @@ class ToolRegistry:
 class CommandGenerator:
     def __init__(self):
         self.llm_gateway = None  # Injected from AI layer
-        
-    def generate(self, tool_name: str, target: str, 
+
+    def generate(self, tool_name: str, target: str,
                 options: Dict, tool_config: Dict) -> List[str]:
         """Generate appropriate command for tool"""
-        
+
         if tool_config['type'] == 'cli':
             return self._generate_cli_command(tool_name, target, options, tool_config)
         elif tool_config['type'] == 'gui':
             return self._generate_gui_workflow(tool_name, target, options, tool_config)
         elif tool_config['type'] == 'api':
             return self._generate_api_call(tool_name, target, options, tool_config)
-    
-    def _generate_cli_command(self, tool_name: str, target: str, 
+
+    def _generate_cli_command(self, tool_name: str, target: str,
                              options: Dict, config: Dict) -> List[str]:
         """Generate CLI command"""
         cmd = [config['executable']]
-        
+
         # Add common arguments based on intent
         if options.get('scan_type') == 'stealth':
             cmd.extend(['-sS', '-T2'])
         elif options.get('scan_type') == 'fast':
             cmd.extend(['-T4', '--min-rate=1000'])
-        
+
         # Add target
         cmd.append(target)
-        
+
         return cmd
 ```
 
@@ -729,17 +729,17 @@ class CommandGenerator:
 class NmapIntegration:
     def __init__(self):
         self.xml_parser = NmapXMLParser()
-        
+
     async def port_scan(self, target: str, ports: str = None) -> Dict:
         """Perform port scan"""
         cmd = ['nmap', '-sS', '-oX', '-']
         if ports:
             cmd.extend(['-p', ports])
         cmd.append(target)
-        
+
         result = await self._execute_command(cmd)
         return self.xml_parser.parse(result['output'])
-    
+
     async def service_detection(self, target: str) -> Dict:
         """Detect services and versions"""
         cmd = ['nmap', '-sV', '-sC', '-oX', '-', target]
@@ -753,24 +753,24 @@ class NmapIntegration:
 class BurpSuiteIntegration:
     def __init__(self, desktop_controller):
         self.desktop = desktop_controller
-        
+
     async def setup_proxy(self, target_url: str, proxy_port: int = 8080) -> Dict:
         """Setup Burp Suite proxy for target"""
         # Launch Burp Suite
         await self.desktop.open_application('burpsuite')
         await asyncio.sleep(10)  # Wait for startup
-        
+
         # Navigate to Proxy tab
         proxy_tab = await self.desktop.find_element('burp_proxy_tab.png')
         await self.desktop.click(proxy_tab)
-        
+
         # Configure target scope
         scope_button = await self.desktop.find_element('burp_scope_button.png')
         await self.desktop.click(scope_button)
-        
+
         # Add target URL to scope
         await self.desktop.type_text(target_url)
-        
+
         return {'proxy_configured': True, 'port': proxy_port}
 ```
 
@@ -782,31 +782,31 @@ class BurpSuiteIntegration:
 class ScanWorkflows:
     def __init__(self, tool_adapter):
         self.tools = tool_adapter
-        
+
     async def comprehensive_web_scan(self, target: str) -> Dict:
         """Comprehensive web application scan"""
         results = {}
-        
+
         # 1. Port scan
         results['nmap'] = await self.tools.execute_tool(
             'nmap', target, {'scan_type': 'web_ports'}
         )
-        
+
         # 2. Web server enumeration
         results['nikto'] = await self.tools.execute_tool(
             'nikto', target
         )
-        
+
         # 3. Directory enumeration
         results['dirb'] = await self.tools.execute_tool(
             'dirb', target
         )
-        
+
         # 4. SSL/TLS testing
         results['sslscan'] = await self.tools.execute_tool(
             'sslscan', target
         )
-        
+
         return self._aggregate_results(results)
 ```
 
