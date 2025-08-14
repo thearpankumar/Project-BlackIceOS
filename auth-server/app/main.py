@@ -144,11 +144,22 @@ async def log_requests(request: Request, call_next):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors with detailed messages"""
     logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
+    
+    # Convert ValidationError details to JSON-serializable format
+    errors = []
+    for error in exc.errors():
+        serializable_error = {
+            "type": error.get("type"),
+            "loc": error.get("loc"),
+            "msg": str(error.get("msg")),  # Convert to string
+            "input": error.get("input"),
+        }
+        errors.append(serializable_error)
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": exc.errors(),
+            "detail": errors,
             "error_type": "validation_error",
             "timestamp": datetime.utcnow().isoformat(),
         },
