@@ -71,7 +71,7 @@ uv add --group dev tool-name     # Add development tool
 uv run python app/main.py        # Run the app
 uv run pytest tests/             # Run tests
 uv run ruff check .              # Run linter
-uv run pre-commit run --all-files --config ../.pre-commit-config.yaml
+uv run --env-file ../.env pre-commit run --all-files --config ../.pre-commit-config.yaml
 ```
 
 ### Docker Development
