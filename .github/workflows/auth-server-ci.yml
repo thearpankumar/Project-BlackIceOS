@@ -40,9 +40,6 @@ jobs:
     - name: Run ruff linter
       run: uv run ruff check . --output-format=github
 
-    - name: Run ruff formatter
-      run: uv run ruff format --check .
-
     - name: Run black formatter check
       run: uv run black --check --diff .
 

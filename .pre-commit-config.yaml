@@ -20,9 +20,6 @@ repos:
         name: ruff lint
         args: [--fix, --exit-non-zero-on-fix]
         files: ^auth-server/.*\.py$
-      - id: ruff-format
-        name: ruff format
-        files: ^auth-server/.*\.py$
 
   - repo: https://github.com/psf/black
     rev: 23.11.0
@@ -30,7 +27,7 @@ repos:
       - id: black
         name: black formatter
         files: ^auth-server/.*\.py$
-        args: [--line-length=88]
+        args: [--line-length=88, --target-version=py311]
 
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0

@@ -198,9 +198,9 @@ class TestEncryptionSecurity:
             # Check for substrings longer than 3 characters
             for i in range(len(api_key) - 3):
                 substring = api_key[i : i + 4]
-                assert substring not in encrypted, (
-                    f"Plaintext fragment '{substring}' found in encrypted {key_name}"
-                )
+                assert (
+                    substring not in encrypted
+                ), f"Plaintext fragment '{substring}' found in encrypted {key_name}"
 
     def test_encryption_key_format_validation(self):
         """Test that encryption key format is validated"""
@@ -250,9 +250,9 @@ class TestEncryptionIntegration:
         # Encrypted key should be safe for database storage (no special SQL chars)
         unsafe_chars = ["'", '"', ";", "--", "/*", "*/"]
         for char in unsafe_chars:
-            assert char not in encrypted, (
-                f"Unsafe SQL character '{char}' found in encrypted key"
-            )
+            assert (
+                char not in encrypted
+            ), f"Unsafe SQL character '{char}' found in encrypted key"
 
         # Should be valid UTF-8
         encrypted.encode("utf-8")  # Should not raise exception
@@ -284,12 +284,12 @@ class TestEncryptionIntegration:
         avg_encryption_time = encryption_time / iterations
         avg_decryption_time = decryption_time / iterations
 
-        assert avg_encryption_time < 0.01, (
-            f"Encryption too slow: {avg_encryption_time:.4f}s per operation"
-        )
-        assert avg_decryption_time < 0.01, (
-            f"Decryption too slow: {avg_decryption_time:.4f}s per operation"
-        )
+        assert (
+            avg_encryption_time < 0.01
+        ), f"Encryption too slow: {avg_encryption_time:.4f}s per operation"
+        assert (
+            avg_decryption_time < 0.01
+        ), f"Decryption too slow: {avg_decryption_time:.4f}s per operation"
 
 
 class TestEncryptionErrorHandling:
