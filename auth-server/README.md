@@ -511,6 +511,8 @@ docker-compose down
 
 #### Test Environment Variables
 ```bash
+
+docker compose up -d
 # Set test environment variables
 export ENCRYPTION_KEY="$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
 export JWT_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')"
