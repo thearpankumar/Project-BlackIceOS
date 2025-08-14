@@ -21,7 +21,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
         files: ^auth-server/.*\.py$
       - id: ruff-format
-        name: ruff format  
+        name: ruff format
         files: ^auth-server/.*\.py$
 
   - repo: https://github.com/psf/black
@@ -56,11 +56,12 @@ repos:
         name: mypy type checking
         files: ^auth-server/app/.*\.py$
         args: [--config-file=auth-server/pyproject.toml]
-        additional_dependencies: 
+        additional_dependencies:
           - fastapi
           - sqlalchemy
           - pydantic
           - types-redis
+          - types-PyJWT
 
   - repo: local
     hooks:
@@ -76,7 +77,7 @@ repos:
             fi
         pass_filenames: false
         always_run: false
-        stages: [commit]
+        stages: [pre-commit]
 
       - id: no-secrets
         name: check for secrets
@@ -94,7 +95,7 @@ repos:
 
       - id: auth-server-only
         name: auth server file changes
-        entry: bash  
+        entry: bash
         language: system
         args:
           - -c
