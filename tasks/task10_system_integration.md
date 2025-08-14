@@ -39,7 +39,186 @@ ls -la tasks/task*.md | wc -l  # Should show 10 task files
 echo "All 10 tasks ready for integration"
 ```
 
+### Phase 2: Database Health Check System (1 hour)
+```bash
+# 1. Create comprehensive database health monitoring
+mkdir -p src/monitoring/database
+mkdir -p scripts/health_checks
 
+# 2. Create database health checker for all system databases
+cat > src/monitoring/database/db_health_monitor.py << 'EOF'
+import sqlite3
+import psutil
+import logging
+import asyncio
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+
+class DatabaseHealthMonitor:
+    """Comprehensive health monitoring for all system databases"""
+    
+    def __init__(self):
+        self.databases = {
+            'auth_database': {
+                'path': '/home/warmachine/codes/Hackathon/Samsung-AI-os/auth-server/database/auth.db',
+                'type': 'postgresql',
+                'connection_string': 'postgresql://kali_auth:password@localhost:5432/kali_auth_db',
+                'critical': True,
+                'tables': ['users', 'api_keys', 'sessions']
+            },
+            'memory_database': {
+                'path': '/tmp/kali-ai-os-memory/memory.db', 
+                'type': 'sqlite',
+                'critical': True,
+                'tables': ['workflows', 'workflow_embeddings', 'learning_patterns', 'memory_sessions']
+            },
+            'audit_database': {
+                'path': '/var/log/kali-ai-os/audit/audit.db',
+                'type': 'sqlite', 
+                'critical': True,
+                'tables': ['audit_activities', 'security_events', 'compliance_events', 'forensic_evidence', 'emergency_actions', 'command_validations']
+            }
+        }
+        
+    async def run_comprehensive_health_check(self) -> Dict[str, Any]:
+        """Run complete database health check across all databases"""
+        # Comprehensive health checking implementation
+        pass
+EOF
+
+# 3. Create database health check script
+cat > scripts/health_checks/check_all_databases.sh << 'EOF'
+#!/bin/bash
+
+echo "🔍 Comprehensive Database Health Check"
+echo "======================================"
+
+# Check Authentication Database (PostgreSQL)
+echo "Checking Authentication Database..."
+if docker ps | grep -q postgres; then
+    docker exec $(docker ps -q -f name=postgres) pg_isready -U kali_auth -d kali_auth_db
+    if [ $? -eq 0 ]; then
+        echo "✅ PostgreSQL connection healthy"
+        
+        # Check table counts
+        USER_COUNT=$(docker exec $(docker ps -q -f name=postgres) psql -U kali_auth -d kali_auth_db -t -c "SELECT COUNT(*) FROM users;")
+        echo "   Users: $USER_COUNT"
+        
+        API_KEY_COUNT=$(docker exec $(docker ps -q -f name=postgres) psql -U kali_auth -d kali_auth_db -t -c "SELECT COUNT(*) FROM api_keys;")
+        echo "   API Keys: $API_KEY_COUNT"
+        
+        SESSION_COUNT=$(docker exec $(docker ps -q -f name=postgres) psql -U kali_auth -d kali_auth_db -t -c "SELECT COUNT(*) FROM sessions;")
+        echo "   Sessions: $SESSION_COUNT"
+    else
+        echo "❌ PostgreSQL connection failed"
+        exit 1
+    fi
+else
+    echo "⚠️  PostgreSQL container not running"
+fi
+
+echo ""
+
+# Check Memory Database (SQLite)
+echo "Checking Memory Database..."
+MEMORY_DB="/tmp/kali-ai-os-memory/memory.db"
+if [ -f "$MEMORY_DB" ]; then
+    echo "✅ Memory database exists: $MEMORY_DB"
+    
+    # Check file size
+    DB_SIZE=$(du -sh "$MEMORY_DB" | cut -f1)
+    echo "   Size: $DB_SIZE"
+    
+    # Check tables
+    TABLES=$(sqlite3 "$MEMORY_DB" "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+    echo "   Tables: $(echo $TABLES | tr '\n' ', ')"
+    
+    # Check integrity
+    INTEGRITY=$(sqlite3 "$MEMORY_DB" "PRAGMA integrity_check;" | head -1)
+    if [ "$INTEGRITY" = "ok" ]; then
+        echo "   Integrity: ✅ OK"
+    else
+        echo "   Integrity: ❌ $INTEGRITY"
+        exit 1
+    fi
+    
+    # Check record counts
+    WORKFLOW_COUNT=$(sqlite3 "$MEMORY_DB" "SELECT COUNT(*) FROM workflows;" 2>/dev/null || echo "0")
+    echo "   Workflows: $WORKFLOW_COUNT"
+    
+    EMBEDDING_COUNT=$(sqlite3 "$MEMORY_DB" "SELECT COUNT(*) FROM workflow_embeddings;" 2>/dev/null || echo "0")
+    echo "   Embeddings: $EMBEDDING_COUNT"
+else
+    echo "⚠️  Memory database not found: $MEMORY_DB"
+fi
+
+echo ""
+
+# Check Audit Database (SQLite)
+echo "Checking Audit Database..."
+AUDIT_DB="/var/log/kali-ai-os/audit/audit.db"
+if [ -f "$AUDIT_DB" ]; then
+    echo "✅ Audit database exists: $AUDIT_DB"
+    
+    # Check file permissions (should be restrictive)
+    PERMS=$(stat -c "%a" "$AUDIT_DB")
+    echo "   Permissions: $PERMS"
+    if [ "$PERMS" = "640" ]; then
+        echo "   Security: ✅ Permissions are secure"
+    else
+        echo "   Security: ⚠️  Permissions should be 640"
+    fi
+    
+    # Check file size
+    DB_SIZE=$(du -sh "$AUDIT_DB" | cut -f1)
+    echo "   Size: $DB_SIZE"
+    
+    # Check integrity
+    INTEGRITY=$(sqlite3 "$AUDIT_DB" "PRAGMA integrity_check;" | head -1)
+    if [ "$INTEGRITY" = "ok" ]; then
+        echo "   Integrity: ✅ OK"
+    else
+        echo "   Integrity: ❌ $INTEGRITY"
+        exit 1
+    fi
+    
+    # Check recent audit activity (last 24 hours)
+    RECENT_AUDITS=$(sqlite3 "$AUDIT_DB" "SELECT COUNT(*) FROM audit_activities WHERE timestamp >= datetime('now', '-1 day');" 2>/dev/null || echo "0")
+    echo "   Recent Activity (24h): $RECENT_AUDITS records"
+    
+    # Check critical security events
+    SECURITY_EVENTS=$(sqlite3 "$AUDIT_DB" "SELECT COUNT(*) FROM security_events WHERE severity='CRITICAL';" 2>/dev/null || echo "0")
+    echo "   Critical Security Events: $SECURITY_EVENTS"
+    
+    # Check emergency actions
+    EMERGENCY_ACTIONS=$(sqlite3 "$AUDIT_DB" "SELECT COUNT(*) FROM emergency_actions;" 2>/dev/null || echo "0")
+    echo "   Emergency Actions: $EMERGENCY_ACTIONS"
+else
+    echo "⚠️  Audit database not found: $AUDIT_DB"
+fi
+
+echo ""
+
+# System Resource Check
+echo "System Resources:"
+echo "   Memory Usage: $(free -h | awk 'NR==2{print $3"/"$2" ("$3/$2*100"%)"}' | cut -d'%' -f1)%"
+echo "   Disk Usage: $(df -h / | awk 'NR==2{print $5}')"
+echo "   Load Average: $(uptime | awk -F'load average:' '{print $2}')"
+
+echo ""
+echo "🎉 Database health check complete!"
+EOF
+
+chmod +x scripts/health_checks/check_all_databases.sh
+
+# 4. Test database health monitoring
+echo "Testing database health monitoring..."
+bash scripts/health_checks/check_all_databases.sh
+
+echo "✅ Database health monitoring system created!"
+```
 
 ### Phase 3: System Orchestrator (2.5 hours)
 ```python

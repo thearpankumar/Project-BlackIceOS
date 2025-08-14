@@ -63,25 +63,341 @@ def test_export_import_functionality():
     # Expected: All workflows transferred with metadata
 ```
 
-### Phase 3: Core Memory Manager (2.5 hours)
+### Phase 3: Automatic SQLite Database Setup (1 hour)
+```bash
+# 1. Create database initialization scripts
+mkdir -p src/memory/database/migrations
+
+# 2. Create automatic SQLite migration script
+cat > src/memory/database/migrations/001_memory_schema.sql << 'EOF'
+-- Kali AI-OS Memory System Database Schema
+-- This file creates the complete memory system structure in SQLite
+
+-- Workflows table - stores all workflow data
+CREATE TABLE IF NOT EXISTS workflows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    steps TEXT NOT NULL,               -- JSON array of workflow steps
+    tools_used TEXT,                  -- JSON array of tools used
+    target_types TEXT,                -- JSON array of supported target types
+    context_tags TEXT,                -- JSON array of context tags
+    success_rate REAL DEFAULT 1.0,
+    usage_count INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL,
+    last_used TEXT,
+    version REAL DEFAULT 1.0,
+    parent_id INTEGER,                -- Reference to parent workflow for versions
+    metadata TEXT,                    -- JSON metadata
+    mode TEXT DEFAULT 'session-only', -- persistent or session-only
+    embedding_text TEXT,              -- Pre-computed text for embeddings
+    FOREIGN KEY (parent_id) REFERENCES workflows(id)
+);
+
+-- Vector embeddings table - stores workflow embeddings for semantic search
+CREATE TABLE IF NOT EXISTS workflow_embeddings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workflow_id INTEGER NOT NULL,
+    embedding_vector TEXT NOT NULL,   -- JSON array of embedding values
+    model_version TEXT DEFAULT 'all-MiniLM-L6-v2',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+);
+
+-- Learning patterns table - stores AI learning data
+CREATE TABLE IF NOT EXISTS learning_patterns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workflow_id INTEGER NOT NULL,
+    pattern_type TEXT NOT NULL,       -- 'improvement', 'optimization', 'user_feedback'
+    pattern_data TEXT NOT NULL,       -- JSON data about the pattern
+    confidence_score REAL DEFAULT 1.0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE CASCADE
+);
+
+-- Memory sessions table - tracks usage sessions
+CREATE TABLE IF NOT EXISTS memory_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_start TEXT NOT NULL,
+    session_end TEXT,
+    mode TEXT NOT NULL,               -- persistent or session-only
+    workflows_used TEXT,              -- JSON array of workflow IDs used
+    storage_path TEXT,
+    metadata TEXT                     -- JSON session metadata
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_workflows_name ON workflows(name);
+CREATE INDEX IF NOT EXISTS idx_workflows_tools ON workflows(tools_used);
+CREATE INDEX IF NOT EXISTS idx_workflows_context ON workflows(context_tags);
+CREATE INDEX IF NOT EXISTS idx_workflows_created_at ON workflows(created_at);
+CREATE INDEX IF NOT EXISTS idx_workflows_mode ON workflows(mode);
+CREATE INDEX IF NOT EXISTS idx_workflows_success_rate ON workflows(success_rate);
+
+CREATE INDEX IF NOT EXISTS idx_embeddings_workflow_id ON workflow_embeddings(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_embeddings_model ON workflow_embeddings(model_version);
+
+CREATE INDEX IF NOT EXISTS idx_patterns_workflow_id ON learning_patterns(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_patterns_type ON learning_patterns(pattern_type);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_mode ON memory_sessions(mode);
+CREATE INDEX IF NOT EXISTS idx_sessions_start ON memory_sessions(session_start);
+
+-- Insert initial test data for validation
+INSERT OR IGNORE INTO workflows (
+    name, description, steps, tools_used, context_tags, 
+    created_at, embedding_text
+) VALUES (
+    'Basic Network Scan',
+    'Simple network reconnaissance using nmap',
+    '[{"action": "port_scan", "tool": "nmap", "params": {"type": "syn_scan"}}]',
+    '["nmap"]',
+    '["network", "reconnaissance", "scanning"]',
+    datetime('now'),
+    'Basic network scan reconnaissance nmap port scanning'
+);
+
+-- Validate table creation
+SELECT 'Database initialization complete. Tables created:' as status;
+SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;
+EOF
+
+# 3. Create SQLite database manager
+cat > src/memory/database/sqlite_manager.py << 'EOF'
+import sqlite3
+import os
+import json
+import logging
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime
+
+class SQLiteManager:
+    def __init__(self, storage_path: str):
+        self.storage_path = Path(storage_path)
+        self.db_path = self.storage_path / "memory.db"
+        self.migration_path = Path(__file__).parent / "migrations"
+        
+        # Ensure storage directory exists
+        self.storage_path.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize database
+        self.init_database()
+        
+    def init_database(self):
+        """Initialize SQLite database with automatic migration"""
+        try:
+            # Check if database exists
+            db_exists = self.db_path.exists()
+            
+            with sqlite3.connect(self.db_path) as conn:
+                # Enable foreign keys
+                conn.execute("PRAGMA foreign_keys = ON")
+                
+                if not db_exists:
+                    logging.info("Creating new memory database...")
+                    self._run_migrations(conn)
+                else:
+                    logging.info("Memory database already exists")
+                    self._verify_schema(conn)
+                    
+                # Test database health
+                self._test_database_health(conn)
+                
+            logging.info(f"Memory database initialized at: {self.db_path}")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Failed to initialize memory database: {e}")
+            return False
+            
+    def _run_migrations(self, conn: sqlite3.Connection):
+        """Execute all migration files"""
+        migration_files = sorted(self.migration_path.glob("*.sql"))
+        
+        for migration_file in migration_files:
+            logging.info(f"Running migration: {migration_file.name}")
+            
+            with open(migration_file, 'r') as f:
+                migration_sql = f.read()
+                
+            # Execute migration (handle multiple statements)
+            conn.executescript(migration_sql)
+            
+        conn.commit()
+        logging.info(f"Completed {len(migration_files)} migrations")
+        
+    def _verify_schema(self, conn: sqlite3.Connection):
+        """Verify database schema is correct"""
+        expected_tables = [
+            'workflows', 'workflow_embeddings', 
+            'learning_patterns', 'memory_sessions'
+        ]
+        
+        cursor = conn.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+        """)
+        
+        existing_tables = [row[0] for row in cursor.fetchall()]
+        
+        for table in expected_tables:
+            if table not in existing_tables:
+                logging.warning(f"Table '{table}' missing, re-running migrations")
+                self._run_migrations(conn)
+                break
+                
+    def _test_database_health(self, conn: sqlite3.Connection):
+        """Test basic database operations"""
+        # Test workflows table
+        cursor = conn.execute("SELECT COUNT(*) FROM workflows")
+        workflow_count = cursor.fetchone()[0]
+        
+        # Test embeddings table  
+        cursor = conn.execute("SELECT COUNT(*) FROM workflow_embeddings")
+        embedding_count = cursor.fetchone()[0]
+        
+        logging.info(f"Database health: {workflow_count} workflows, {embedding_count} embeddings")
+        
+    def get_connection(self) -> sqlite3.Connection:
+        """Get database connection with proper configuration"""
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.row_factory = sqlite3.Row
+        return conn
+        
+    def execute_query(self, query: str, params: Tuple = ()) -> List[sqlite3.Row]:
+        """Execute query and return results"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(query, params)
+            return cursor.fetchall()
+            
+    def execute_update(self, query: str, params: Tuple = ()) -> int:
+        """Execute update query and return affected rows"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(query, params)
+            conn.commit()
+            return cursor.rowcount
+            
+    def get_database_stats(self) -> Dict[str, Any]:
+        """Get database statistics"""
+        with self.get_connection() as conn:
+            stats = {}
+            
+            # Table counts
+            for table in ['workflows', 'workflow_embeddings', 'learning_patterns', 'memory_sessions']:
+                cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
+                stats[f"{table}_count"] = cursor.fetchone()[0]
+                
+            # Database size
+            stats['database_size_bytes'] = self.db_path.stat().st_size
+            stats['database_path'] = str(self.db_path)
+            
+            return stats
+EOF
+
+# 4. Create automated database connection module
+cat > src/memory/database/connection.py << 'EOF'
+import os
+import logging
+from pathlib import Path
+from .sqlite_manager import SQLiteManager
+
+# Global database manager instance
+_db_manager = None
+
+def get_database_manager(storage_path: str = None) -> SQLiteManager:
+    """Get singleton database manager instance"""
+    global _db_manager
+    
+    if _db_manager is None:
+        if storage_path is None:
+            # Auto-determine storage path
+            if os.path.exists("/tmp"):
+                storage_path = "/tmp/kali-ai-os-memory"
+            else:
+                storage_path = "./data/memory"
+                
+        _db_manager = SQLiteManager(storage_path)
+        
+    return _db_manager
+
+def initialize_memory_database(storage_path: str = None, force_reset: bool = False) -> bool:
+    """Initialize memory database with automatic setup"""
+    try:
+        if force_reset and storage_path:
+            # Remove existing database for fresh start
+            db_path = Path(storage_path) / "memory.db"
+            if db_path.exists():
+                db_path.unlink()
+                logging.info("Existing database removed for reset")
+                
+        db_manager = get_database_manager(storage_path)
+        
+        # Test database operations
+        stats = db_manager.get_database_stats()
+        logging.info(f"Memory database ready: {stats}")
+        
+        return True
+        
+    except Exception as e:
+        logging.error(f"Failed to initialize memory database: {e}")
+        return False
+
+def check_database_health() -> Dict[str, Any]:
+    """Check database connection and health"""
+    try:
+        db_manager = get_database_manager()
+        stats = db_manager.get_database_stats()
+        
+        return {
+            'healthy': True,
+            'statistics': stats,
+            'message': 'Memory database is healthy'
+        }
+        
+    except Exception as e:
+        return {
+            'healthy': False,
+            'error': str(e),
+            'message': 'Memory database connection failed'
+        }
+EOF
+
+echo "✅ SQLite database auto-setup complete!"
+```
+
+### Phase 4: Core Memory Manager with Database Integration (2.5 hours)
 ```python
 # src/memory/core/memory_manager.py
 import os
 import json
+import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
+from ..database.connection import get_database_manager, initialize_memory_database
+
 class MemoryManager:
-    def __init__(self, mode: str = "session-only"):
+    def __init__(self, mode: str = "session-only", storage_path: str = None):
         self.mode = mode
-        self.storage_path = self._determine_storage_path(mode)
-        self.workflow_storage = WorkflowStorage(self.storage_path)
-        self.vector_store = VectorStore(f"{self.storage_path}/vectors")
+        self.storage_path = self._determine_storage_path(mode, storage_path)
+        
+        # Initialize database automatically
+        if not initialize_memory_database(self.storage_path):
+            raise Exception("Failed to initialize memory database")
+            
+        self.db_manager = get_database_manager(self.storage_path)
+        self.workflow_storage = WorkflowStorage(self.db_manager)
+        self.vector_store = VectorStore(f"{self.storage_path}/vectors", self.db_manager)
         self.semantic_search = SemanticSearch(self.vector_store)
         self.learner = WorkflowLearner(self)
         
-    def _determine_storage_path(self, mode: str) -> str:
+    def _determine_storage_path(self, mode: str, custom_path: str = None) -> str:
         """Choose storage location based on mode"""
+        if custom_path:
+            return custom_path
+            
         if mode == "persistent":
             # Check if persistent storage is available
             persistent_path = "/persistent/kali-ai-os"
@@ -302,19 +618,182 @@ class VectorStore:
             return []
 ```
 
-### Phase 5: Workflow Storage Engine (1.5 hours)
+### Phase 5: Database Testing & Validation (1 hour)
+```bash
+# 1. Test SQLite database creation
+mkdir -p /tmp/test_memory_system
+cd /tmp/test_memory_system
+
+# 2. Create database test script
+cat > test_memory_db.py << 'EOF'
+import sys
+import os
+import json
+import logging
+from pathlib import Path
+
+# Add project path to imports
+sys.path.insert(0, '/path/to/Samsung-AI-os/kali-ai-os/src')
+
+from memory.database.connection import initialize_memory_database, check_database_health
+from memory.database.sqlite_manager import SQLiteManager
+
+def test_database_initialization():
+    """Test automatic database setup"""
+    print("🔧 Testing SQLite database initialization...")
+    
+    test_path = "/tmp/test_memory_db"
+    
+    # Initialize database
+    result = initialize_memory_database(test_path, force_reset=True)
+    assert result == True, "Database initialization failed"
+    
+    # Check database health
+    health = check_database_health()
+    assert health['healthy'] == True, f"Database unhealthy: {health.get('error')}"
+    
+    print(f"✅ Database initialized successfully at {test_path}")
+    print(f"   Statistics: {health['statistics']}")
+
+def test_database_operations():
+    """Test basic database operations"""
+    print("🔧 Testing database operations...")
+    
+    db_manager = SQLiteManager("/tmp/test_memory_db")
+    
+    # Test workflow insertion
+    workflow_data = {
+        'name': 'Test Workflow',
+        'description': 'Test workflow for database validation',
+        'steps': '[{"action": "test", "tool": "test_tool"}]',
+        'tools_used': '["test_tool"]',
+        'context_tags': '["test", "validation"]',
+        'created_at': '2024-01-01T00:00:00',
+        'embedding_text': 'test workflow validation database'
+    }
+    
+    # Insert workflow
+    result = db_manager.execute_update("""
+        INSERT INTO workflows (name, description, steps, tools_used, context_tags, created_at, embedding_text)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        workflow_data['name'], workflow_data['description'], workflow_data['steps'],
+        workflow_data['tools_used'], workflow_data['context_tags'], 
+        workflow_data['created_at'], workflow_data['embedding_text']
+    ))
+    
+    assert result > 0, "Failed to insert workflow"
+    
+    # Query workflows
+    workflows = db_manager.execute_query("SELECT * FROM workflows WHERE name = ?", ('Test Workflow',))
+    assert len(workflows) > 0, "Failed to retrieve inserted workflow"
+    
+    workflow = workflows[0]
+    assert workflow['name'] == 'Test Workflow', "Workflow data mismatch"
+    
+    print("✅ Database operations working correctly")
+    print(f"   Retrieved workflow: {workflow['name']}")
+
+def test_database_schema():
+    """Test database schema is correct"""
+    print("🔧 Testing database schema...")
+    
+    db_manager = SQLiteManager("/tmp/test_memory_db")
+    
+    # Check tables exist
+    tables = db_manager.execute_query("""
+        SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+    """)
+    
+    table_names = [table['name'] for table in tables]
+    expected_tables = ['workflows', 'workflow_embeddings', 'learning_patterns', 'memory_sessions']
+    
+    for expected_table in expected_tables:
+        assert expected_table in table_names, f"Missing table: {expected_table}"
+    
+    print("✅ Database schema is correct")
+    print(f"   Tables found: {table_names}")
+
+def test_database_indexes():
+    """Test database indexes are created"""
+    print("🔧 Testing database indexes...")
+    
+    db_manager = SQLiteManager("/tmp/test_memory_db")
+    
+    # Check indexes exist
+    indexes = db_manager.execute_query("""
+        SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'
+    """)
+    
+    index_names = [index['name'] for index in indexes]
+    expected_indexes = [
+        'idx_workflows_name', 'idx_workflows_tools', 'idx_workflows_context',
+        'idx_embeddings_workflow_id', 'idx_patterns_workflow_id'
+    ]
+    
+    for expected_index in expected_indexes:
+        assert expected_index in index_names, f"Missing index: {expected_index}"
+    
+    print("✅ Database indexes are correct")
+    print(f"   Indexes found: {len(index_names)}")
+
+def main():
+    """Run all database tests"""
+    print("🚀 Starting Memory Database Tests...")
+    
+    try:
+        test_database_initialization()
+        test_database_schema()
+        test_database_indexes() 
+        test_database_operations()
+        
+        print("\n🎉 All memory database tests passed!")
+        
+    except Exception as e:
+        print(f"\n❌ Database test failed: {e}")
+        return False
+        
+    return True
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)
+EOF
+
+# 3. Run database tests
+python test_memory_db.py
+
+# 4. Test database persistence
+echo "🔧 Testing database persistence..."
+
+# Create workflow
+sqlite3 /tmp/test_memory_db/memory.db "
+INSERT INTO workflows (name, description, steps, tools_used, created_at)
+VALUES ('Persistence Test', 'Test workflow persistence', '[{\"action\":\"test\"}]', '[\"test\"]', datetime('now'));
+"
+
+# Verify it persists
+workflow_count=$(sqlite3 /tmp/test_memory_db/memory.db "SELECT COUNT(*) FROM workflows WHERE name='Persistence Test';")
+if [ "$workflow_count" -eq 1 ]; then
+    echo "✅ Database persistence working"
+else
+    echo "❌ Database persistence failed"
+fi
+
+echo "✅ Database testing complete!"
+```
+
+### Phase 6: Workflow Storage Engine with Database Integration (1.5 hours)
 ```python
 # src/memory/persistence/workflow_storage.py
-import sqlite3
 import json
+import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 class WorkflowStorage:
-    def __init__(self, storage_path: str):
-        self.db_path = f"{storage_path}/workflows.db"
-        os.makedirs(storage_path, exist_ok=True)
-        self.init_database()
+    def __init__(self, db_manager):
+        self.db_manager = db_manager
         
     def init_database(self):
         """Initialize SQLite database with workflow schema"""
@@ -1119,6 +1598,209 @@ MEMORY_CONFIG = {
         'compression_enabled': True
     }
 }
+```
+
+## SQLite Database Troubleshooting Guide
+
+### Common Database Problems and Solutions:
+
+**1. Database file not created automatically:**
+```bash
+# Check if directory exists
+ls -la /tmp/kali-ai-os-memory/
+
+# Check migration files exist
+ls -la src/memory/database/migrations/
+
+# Manually create database if needed
+cd /tmp/kali-ai-os-memory/
+sqlite3 memory.db < /path/to/migrations/001_memory_schema.sql
+
+# Verify tables created
+sqlite3 memory.db ".tables"
+```
+
+**2. Permission errors on database file:**
+```bash
+# Check file permissions
+ls -la /tmp/kali-ai-os-memory/memory.db
+
+# Fix permissions if needed
+chmod 664 /tmp/kali-ai-os-memory/memory.db
+chown $USER:$USER /tmp/kali-ai-os-memory/memory.db
+
+# Check directory permissions
+chmod 755 /tmp/kali-ai-os-memory/
+```
+
+**3. Database corruption or schema errors:**
+```bash
+# Check database integrity
+sqlite3 /tmp/kali-ai-os-memory/memory.db "PRAGMA integrity_check;"
+
+# Check schema version
+sqlite3 /tmp/kali-ai-os-memory/memory.db "SELECT name FROM sqlite_master WHERE type='table';"
+
+# Rebuild database if corrupted
+mv memory.db memory.db.backup
+python -c "from src.memory.database.connection import initialize_memory_database; initialize_memory_database('/tmp/kali-ai-os-memory', force_reset=True)"
+```
+
+**4. Application can't connect to SQLite database:**
+```bash
+# Test SQLite connection directly
+sqlite3 /tmp/kali-ai-os-memory/memory.db "SELECT sqlite_version();"
+
+# Check Python SQLite module
+python -c "import sqlite3; print(sqlite3.sqlite_version)"
+
+# Test database manager
+python -c "
+from src.memory.database.connection import check_database_health
+health = check_database_health()
+print(health)
+"
+```
+
+**5. Workflow insertion/retrieval fails:**
+```bash
+# Check table structure
+sqlite3 /tmp/kali-ai-os-memory/memory.db ".schema workflows"
+
+# Test manual insertion
+sqlite3 /tmp/kali-ai-os-memory/memory.db "
+INSERT INTO workflows (name, steps, tools_used, created_at) 
+VALUES ('Test', '[{}]', '[\"test\"]', datetime('now'));
+"
+
+# Check data exists
+sqlite3 /tmp/kali-ai-os-memory/memory.db "SELECT COUNT(*) FROM workflows;"
+```
+
+**6. Vector embeddings not working:**
+```bash
+# Check embeddings table
+sqlite3 /tmp/kali-ai-os-memory/memory.db "SELECT COUNT(*) FROM workflow_embeddings;"
+
+# Test embedding insertion
+python -c "
+import json
+from src.memory.database.sqlite_manager import SQLiteManager
+db = SQLiteManager('/tmp/kali-ai-os-memory')
+db.execute_update('INSERT INTO workflow_embeddings (workflow_id, embedding_vector) VALUES (1, ?)', (json.dumps([0.1, 0.2, 0.3]),))
+"
+```
+
+**7. Database locks or concurrent access issues:**
+```bash
+# Check for database locks
+lsof | grep memory.db
+
+# Enable WAL mode for better concurrency
+sqlite3 /tmp/kali-ai-os-memory/memory.db "PRAGMA journal_mode=WAL;"
+
+# Check WAL files
+ls -la /tmp/kali-ai-os-memory/memory.db*
+```
+
+**8. Storage space issues:**
+```bash
+# Check disk space
+df -h /tmp
+
+# Check database size
+du -sh /tmp/kali-ai-os-memory/
+
+# Vacuum database to reclaim space
+sqlite3 /tmp/kali-ai-os-memory/memory.db "VACUUM;"
+```
+
+**9. Migration files not executing:**
+```bash
+# Check migration files have correct format
+head -20 src/memory/database/migrations/001_memory_schema.sql
+
+# Test migration manually
+sqlite3 /tmp/kali-ai-os-memory/memory.db < src/memory/database/migrations/001_memory_schema.sql
+
+# Check migration log
+python -c "
+import logging
+logging.basicConfig(level=logging.INFO)
+from src.memory.database.sqlite_manager import SQLiteManager
+db = SQLiteManager('/tmp/kali-ai-os-memory')
+"
+```
+
+**10. Performance issues with large datasets:**
+```bash
+# Analyze query performance
+sqlite3 /tmp/kali-ai-os-memory/memory.db "EXPLAIN QUERY PLAN SELECT * FROM workflows WHERE name LIKE '%test%';"
+
+# Update table statistics
+sqlite3 /tmp/kali-ai-os-memory/memory.db "ANALYZE;"
+
+# Check index usage
+sqlite3 /tmp/kali-ai-os-memory/memory.db "SELECT name FROM sqlite_master WHERE type='index';"
+```
+
+### Database Health Check Script:
+```bash
+# Create comprehensive health check
+cat > check_memory_db_health.sh << 'EOF'
+#!/bin/bash
+
+DB_PATH="/tmp/kali-ai-os-memory/memory.db"
+
+echo "🔍 Memory Database Health Check"
+echo "================================"
+
+# Check if database exists
+if [ -f "$DB_PATH" ]; then
+    echo "✅ Database file exists: $DB_PATH"
+else
+    echo "❌ Database file missing: $DB_PATH"
+    exit 1
+fi
+
+# Check file permissions
+PERMS=$(stat -c "%a" "$DB_PATH")
+echo "📋 File permissions: $PERMS"
+
+# Check database size
+SIZE=$(du -sh "$DB_PATH" | cut -f1)
+echo "📊 Database size: $SIZE"
+
+# Test database connection
+if sqlite3 "$DB_PATH" "SELECT 1;" >/dev/null 2>&1; then
+    echo "✅ Database connection successful"
+else
+    echo "❌ Database connection failed"
+    exit 1
+fi
+
+# Check table counts
+echo "📈 Table statistics:"
+sqlite3 "$DB_PATH" "
+SELECT 
+    'workflows: ' || COUNT(*) FROM workflows
+UNION ALL SELECT 
+    'embeddings: ' || COUNT(*) FROM workflow_embeddings
+UNION ALL SELECT 
+    'patterns: ' || COUNT(*) FROM learning_patterns
+UNION ALL SELECT 
+    'sessions: ' || COUNT(*) FROM memory_sessions;
+"
+
+# Check recent activity
+echo "⏰ Recent workflows:"
+sqlite3 "$DB_PATH" "SELECT name, created_at FROM workflows ORDER BY created_at DESC LIMIT 3;"
+
+echo "🎉 Database health check complete!"
+EOF
+
+chmod +x check_memory_db_health.sh
+./check_memory_db_health.sh
 ```
 
 ## Next Steps

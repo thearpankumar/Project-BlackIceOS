@@ -822,7 +822,616 @@ class EmergencyStop:
             }
 ```
 
-### Phase 6: Audit & Compliance System (1.5 hours)
+### Phase 6: Audit Database Setup (1 hour)
+```bash
+# 1. Create audit database initialization scripts
+mkdir -p src/safety/audit/database/migrations
+
+# 2. Create comprehensive audit database schema
+cat > src/safety/audit/database/migrations/001_audit_schema.sql << 'EOF'
+-- Kali AI-OS Safety & Audit Database Schema
+-- This creates a forensic-grade audit trail with tamper detection
+
+-- Main audit log table - stores all system activities
+CREATE TABLE IF NOT EXISTS audit_activities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    audit_id TEXT NOT NULL UNIQUE,      -- UUID for each audit entry
+    timestamp TEXT NOT NULL,            -- ISO timestamp
+    activity_type TEXT NOT NULL,        -- Type of activity
+    activity_data TEXT NOT NULL,        -- JSON data about the activity
+    user_context TEXT,                  -- JSON user information
+    system_context TEXT,                -- JSON system information
+    security_context TEXT,              -- JSON security information
+    compliance_metadata TEXT,           -- JSON compliance information
+    integrity_hash TEXT NOT NULL,       -- SHA-256 hash for tamper detection
+    previous_hash TEXT,                  -- Hash of previous record (blockchain-style)
+    hash_algorithm TEXT DEFAULT 'SHA-256',
+    custody_id TEXT,                    -- Chain of custody reference
+    log_level TEXT DEFAULT 'INFO',      -- INFO, WARN, ERROR, CRITICAL
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Security events table - specific security incidents
+CREATE TABLE IF NOT EXISTS security_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT NOT NULL UNIQUE,      -- UUID for each security event
+    audit_id TEXT NOT NULL,             -- Reference to audit_activities
+    event_type TEXT NOT NULL,           -- Type of security event
+    severity TEXT NOT NULL,             -- LOW, MEDIUM, HIGH, CRITICAL
+    threat_indicators TEXT,             -- JSON array of threat indicators
+    risk_assessment TEXT,               -- JSON risk assessment data
+    incident_correlation TEXT,          -- JSON incident correlation data
+    blocked BOOLEAN DEFAULT FALSE,      -- Whether action was blocked
+    emergency_triggered BOOLEAN DEFAULT FALSE, -- Whether emergency stop was triggered
+    evidence_collected BOOLEAN DEFAULT FALSE,  -- Whether forensic evidence was collected
+    response_actions TEXT,              -- JSON array of response actions taken
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (audit_id) REFERENCES audit_activities(audit_id)
+);
+
+-- Compliance events table - legal and regulatory compliance
+CREATE TABLE IF NOT EXISTS compliance_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    compliance_id TEXT NOT NULL UNIQUE, -- UUID for compliance event
+    audit_id TEXT NOT NULL,             -- Reference to audit_activities
+    legal_framework TEXT,               -- Applicable legal framework
+    regulation TEXT,                    -- Specific regulation/law
+    compliance_status TEXT NOT NULL,    -- COMPLIANT, NON_COMPLIANT, PENDING_REVIEW
+    jurisdiction TEXT,                  -- Legal jurisdiction
+    authorization_required BOOLEAN DEFAULT FALSE, -- Whether authorization is needed
+    consent_verified BOOLEAN DEFAULT FALSE,       -- Whether user consent exists
+    data_protection_impact TEXT,        -- GDPR/CCPA impact assessment
+    retention_period INTEGER,           -- Data retention period in days
+    legal_risk_level TEXT,              -- LOW, MEDIUM, HIGH, CRITICAL
+    remediation_required BOOLEAN DEFAULT FALSE,   -- Whether remediation is needed
+    remediation_actions TEXT,           -- JSON array of remediation actions
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (audit_id) REFERENCES audit_activities(audit_id)
+);
+
+-- Forensic evidence table - digital evidence collection
+CREATE TABLE IF NOT EXISTS forensic_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    evidence_id TEXT NOT NULL UNIQUE,   -- UUID for evidence package
+    incident_id TEXT,                   -- Related incident ID
+    audit_id TEXT,                      -- Reference to audit_activities
+    evidence_type TEXT NOT NULL,        -- SYSTEM_SNAPSHOT, PROCESS_DUMP, NETWORK_CAPTURE, etc.
+    collection_timestamp TEXT NOT NULL, -- When evidence was collected
+    evidence_data TEXT NOT NULL,        -- JSON evidence data
+    evidence_hash TEXT NOT NULL,        -- SHA-256 hash of evidence
+    collection_method TEXT,             -- How evidence was collected
+    collector_info TEXT,                -- JSON info about collector (system/user)
+    chain_of_custody TEXT,              -- JSON chain of custody record
+    integrity_verified BOOLEAN DEFAULT TRUE,      -- Whether integrity check passed
+    admissible BOOLEAN DEFAULT TRUE,    -- Whether evidence is legally admissible
+    retention_period INTEGER DEFAULT 2555, -- 7 years default retention
+    access_log TEXT,                    -- JSON log of who accessed evidence
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (audit_id) REFERENCES audit_activities(audit_id)
+);
+
+-- Emergency actions table - emergency stop and response actions
+CREATE TABLE IF NOT EXISTS emergency_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    emergency_id TEXT NOT NULL UNIQUE, -- UUID for emergency action
+    audit_id TEXT NOT NULL,            -- Reference to audit_activities
+    trigger_reason TEXT NOT NULL,      -- Why emergency was triggered
+    triggered_by TEXT NOT NULL,        -- Who/what triggered emergency
+    emergency_type TEXT NOT NULL,      -- FULL_STOP, PARTIAL_STOP, CONTAINMENT
+    systems_affected TEXT,             -- JSON array of affected systems
+    stop_duration INTEGER,             -- Duration in seconds
+    recovery_actions TEXT,             -- JSON array of recovery actions
+    impact_assessment TEXT,            -- JSON impact assessment
+    lessons_learned TEXT,              -- JSON lessons learned
+    follow_up_required BOOLEAN DEFAULT TRUE,     -- Whether follow-up is needed
+    incident_report_id TEXT,           -- Reference to incident report
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TEXT,                  -- When emergency was resolved
+    FOREIGN KEY (audit_id) REFERENCES audit_activities(audit_id)
+);
+
+-- Command validation results table - all command validation attempts
+CREATE TABLE IF NOT EXISTS command_validations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    validation_id TEXT NOT NULL UNIQUE, -- UUID for validation
+    audit_id TEXT NOT NULL,             -- Reference to audit_activities
+    command_text TEXT NOT NULL,         -- The command that was validated
+    validation_result TEXT NOT NULL,    -- ALLOWED, BLOCKED, REQUIRES_APPROVAL
+    risk_level TEXT NOT NULL,           -- LOW, MEDIUM, HIGH, CRITICAL
+    risk_score REAL,                    -- Numerical risk score (0.0-1.0)
+    threat_types TEXT,                  -- JSON array of detected threat types
+    validation_reasons TEXT,            -- JSON array of validation reasons
+    target_analysis TEXT,               -- JSON target analysis data
+    scope_analysis TEXT,                -- JSON scope analysis data
+    ethical_analysis TEXT,              -- JSON ethical analysis data
+    compliance_analysis TEXT,           -- JSON compliance analysis data
+    validation_time_ms INTEGER,         -- Time taken for validation in milliseconds
+    approved_by TEXT,                   -- Who approved if manual approval required
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (audit_id) REFERENCES audit_activities(audit_id)
+);
+
+-- Create comprehensive indexes for performance and forensic queries
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_activities(timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_type ON audit_activities(activity_type);
+CREATE INDEX IF NOT EXISTS idx_audit_hash ON audit_activities(integrity_hash);
+CREATE INDEX IF NOT EXISTS idx_audit_custody ON audit_activities(custody_id);
+CREATE INDEX IF NOT EXISTS idx_audit_level ON audit_activities(log_level);
+
+CREATE INDEX IF NOT EXISTS idx_security_type ON security_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_security_severity ON security_events(severity);
+CREATE INDEX IF NOT EXISTS idx_security_blocked ON security_events(blocked);
+CREATE INDEX IF NOT EXISTS idx_security_emergency ON security_events(emergency_triggered);
+CREATE INDEX IF NOT EXISTS idx_security_timestamp ON security_events(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_compliance_status ON compliance_events(compliance_status);
+CREATE INDEX IF NOT EXISTS idx_compliance_framework ON compliance_events(legal_framework);
+CREATE INDEX IF NOT EXISTS idx_compliance_jurisdiction ON compliance_events(jurisdiction);
+CREATE INDEX IF NOT EXISTS idx_compliance_risk ON compliance_events(legal_risk_level);
+
+CREATE INDEX IF NOT EXISTS idx_evidence_type ON forensic_evidence(evidence_type);
+CREATE INDEX IF NOT EXISTS idx_evidence_incident ON forensic_evidence(incident_id);
+CREATE INDEX IF NOT EXISTS idx_evidence_timestamp ON forensic_evidence(collection_timestamp);
+CREATE INDEX IF NOT EXISTS idx_evidence_hash ON forensic_evidence(evidence_hash);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_type ON emergency_actions(emergency_type);
+CREATE INDEX IF NOT EXISTS idx_emergency_trigger ON emergency_actions(triggered_by);
+CREATE INDEX IF NOT EXISTS idx_emergency_resolved ON emergency_actions(resolved_at);
+
+CREATE INDEX IF NOT EXISTS idx_validation_result ON command_validations(validation_result);
+CREATE INDEX IF NOT EXISTS idx_validation_risk ON command_validations(risk_level);
+CREATE INDEX IF NOT EXISTS idx_validation_command ON command_validations(command_text);
+
+-- Insert initial audit entry to validate setup
+INSERT INTO audit_activities (
+    audit_id, timestamp, activity_type, activity_data,
+    system_context, integrity_hash
+) VALUES (
+    'init_' || datetime('now') || '_' || abs(random()),
+    datetime('now'),
+    'system_initialization',
+    '{"action": "audit_database_initialized", "version": "1.0"}',
+    '{"component": "audit_database", "status": "initialized"}',
+    'initial_setup_hash'
+);
+
+-- Validate table creation
+SELECT 'Audit database initialization complete. Tables created:' as status;
+SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;
+EOF
+
+# 3. Create audit database manager with tamper protection
+cat > src/safety/audit/database/audit_db_manager.py << 'EOF'
+import sqlite3
+import os
+import json
+import hashlib
+import uuid
+import logging
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime
+
+class AuditDatabaseManager:
+    def __init__(self, audit_db_path: str = "/var/log/kali-ai-os/audit"):
+        self.audit_db_path = Path(audit_db_path)
+        self.db_path = self.audit_db_path / "audit.db"
+        self.migration_path = Path(__file__).parent / "migrations"
+        
+        # Ensure audit directory exists with secure permissions
+        self.audit_db_path.mkdir(parents=True, exist_ok=True)
+        os.chmod(self.audit_db_path, 0o750)  # Owner and group only
+        
+        # Initialize database
+        self.init_audit_database()
+        
+        # Track last hash for blockchain-style integrity
+        self.last_hash = self._get_last_hash()
+        
+    def init_audit_database(self):
+        """Initialize audit database with automatic migration"""
+        try:
+            # Check if database exists
+            db_exists = self.db_path.exists()
+            
+            with sqlite3.connect(self.db_path) as conn:
+                # Enable foreign keys and secure settings
+                conn.execute("PRAGMA foreign_keys = ON")
+                conn.execute("PRAGMA journal_mode = WAL")  # Write-Ahead Logging
+                conn.execute("PRAGMA synchronous = FULL")  # Ensure data integrity
+                
+                if not db_exists:
+                    logging.info("Creating new audit database...")
+                    self._run_migrations(conn)
+                else:
+                    logging.info("Audit database exists, verifying schema...")
+                    self._verify_schema(conn)
+                    
+                # Test database health
+                self._test_database_health(conn)
+                
+                # Set secure permissions on database file
+                if self.db_path.exists():
+                    os.chmod(self.db_path, 0o640)  # Owner read/write, group read
+                    
+            logging.info(f"Audit database initialized at: {self.db_path}")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Failed to initialize audit database: {e}")
+            return False
+            
+    def _run_migrations(self, conn: sqlite3.Connection):
+        """Execute all audit migration files"""
+        migration_files = sorted(self.migration_path.glob("*.sql"))
+        
+        for migration_file in migration_files:
+            logging.info(f"Running audit migration: {migration_file.name}")
+            
+            with open(migration_file, 'r') as f:
+                migration_sql = f.read()
+                
+            # Execute migration (handle multiple statements)
+            conn.executescript(migration_sql)
+            
+        conn.commit()
+        logging.info(f"Completed {len(migration_files)} audit migrations")
+        
+    def _verify_schema(self, conn: sqlite3.Connection):
+        """Verify audit database schema is correct"""
+        expected_tables = [
+            'audit_activities', 'security_events', 'compliance_events',
+            'forensic_evidence', 'emergency_actions', 'command_validations'
+        ]
+        
+        cursor = conn.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+        """)
+        
+        existing_tables = [row[0] for row in cursor.fetchall()]
+        
+        for table in expected_tables:
+            if table not in existing_tables:
+                logging.warning(f"Audit table '{table}' missing, re-running migrations")
+                self._run_migrations(conn)
+                break
+                
+    def _test_database_health(self, conn: sqlite3.Connection):
+        """Test audit database operations"""
+        # Test each audit table
+        for table in ['audit_activities', 'security_events', 'compliance_events']:
+            cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
+            count = cursor.fetchone()[0]
+            logging.info(f"Audit table '{table}': {count} records")
+            
+    def log_audit_activity(self, activity: Dict[str, Any]) -> str:
+        """Log activity with full audit trail and tamper protection"""
+        audit_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("PRAGMA foreign_keys = ON")
+                
+                # Prepare audit record
+                audit_record = {
+                    'audit_id': audit_id,
+                    'timestamp': timestamp,
+                    'activity_type': activity.get('type', 'unknown'),
+                    'activity_data': json.dumps(activity),
+                    'user_context': json.dumps(activity.get('user_context', {})),
+                    'system_context': json.dumps(activity.get('system_context', {})),
+                    'security_context': json.dumps(activity.get('security_context', {})),
+                    'compliance_metadata': json.dumps(activity.get('compliance_metadata', {})),
+                    'log_level': activity.get('log_level', 'INFO')
+                }
+                
+                # Calculate integrity hash
+                integrity_hash = self._calculate_integrity_hash(audit_record)
+                audit_record['integrity_hash'] = integrity_hash
+                audit_record['previous_hash'] = self.last_hash
+                
+                # Insert audit record
+                conn.execute('''
+                    INSERT INTO audit_activities 
+                    (audit_id, timestamp, activity_type, activity_data, user_context,
+                     system_context, security_context, compliance_metadata,
+                     integrity_hash, previous_hash, log_level)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    audit_record['audit_id'], audit_record['timestamp'],
+                    audit_record['activity_type'], audit_record['activity_data'],
+                    audit_record['user_context'], audit_record['system_context'],
+                    audit_record['security_context'], audit_record['compliance_metadata'],
+                    audit_record['integrity_hash'], audit_record['previous_hash'],
+                    audit_record['log_level']
+                ))
+                
+                # Update last hash for next record
+                self.last_hash = integrity_hash
+                
+                conn.commit()
+                return audit_id
+                
+        except Exception as e:
+            logging.error(f"Failed to log audit activity: {e}")
+            # Emergency fallback logging
+            self._emergency_log_fallback(activity, audit_id, str(e))
+            return audit_id
+            
+    def log_security_event(self, event: Dict[str, Any], audit_id: str = None) -> str:
+        """Log security event with correlation to audit activity"""
+        event_id = str(uuid.uuid4())
+        
+        # Create audit activity if not provided
+        if not audit_id:
+            audit_id = self.log_audit_activity({
+                'type': 'security_event',
+                'security_event': event
+            })
+            
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute('''
+                    INSERT INTO security_events
+                    (event_id, audit_id, event_type, severity, threat_indicators,
+                     risk_assessment, blocked, emergency_triggered, evidence_collected,
+                     response_actions)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    event_id, audit_id, event.get('type', 'unknown'),
+                    event.get('severity', 'MEDIUM'),
+                    json.dumps(event.get('threat_indicators', [])),
+                    json.dumps(event.get('risk_assessment', {})),
+                    event.get('blocked', False),
+                    event.get('emergency_triggered', False),
+                    event.get('evidence_collected', False),
+                    json.dumps(event.get('response_actions', []))
+                ))
+                
+                conn.commit()
+                return event_id
+                
+        except Exception as e:
+            logging.error(f"Failed to log security event: {e}")
+            return event_id
+            
+    def log_command_validation(self, validation: Dict[str, Any], audit_id: str = None) -> str:
+        """Log command validation result"""
+        validation_id = str(uuid.uuid4())
+        
+        # Create audit activity if not provided
+        if not audit_id:
+            audit_id = self.log_audit_activity({
+                'type': 'command_validation',
+                'validation': validation
+            })
+            
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute('''
+                    INSERT INTO command_validations
+                    (validation_id, audit_id, command_text, validation_result,
+                     risk_level, risk_score, threat_types, validation_reasons,
+                     target_analysis, scope_analysis, ethical_analysis,
+                     compliance_analysis, validation_time_ms)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    validation_id, audit_id, validation.get('command', ''),
+                    validation.get('result', 'UNKNOWN'),
+                    validation.get('risk_level', 'MEDIUM'),
+                    validation.get('risk_score', 0.0),
+                    json.dumps(validation.get('threat_types', [])),
+                    json.dumps(validation.get('reasons', [])),
+                    json.dumps(validation.get('target_analysis', {})),
+                    json.dumps(validation.get('scope_analysis', {})),
+                    json.dumps(validation.get('ethical_analysis', {})),
+                    json.dumps(validation.get('compliance_analysis', {})),
+                    validation.get('validation_time_ms', 0)
+                ))
+                
+                conn.commit()
+                return validation_id
+                
+        except Exception as e:
+            logging.error(f"Failed to log command validation: {e}")
+            return validation_id
+            
+    def get_audit_trail(self, start_time: str = None, end_time: str = None, 
+                       activity_types: List[str] = None, 
+                       limit: int = 1000) -> List[Dict[str, Any]]:
+        """Retrieve audit trail with filtering"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                
+                query = "SELECT * FROM audit_activities WHERE 1=1"
+                params = []
+                
+                if start_time:
+                    query += " AND timestamp >= ?"
+                    params.append(start_time)
+                    
+                if end_time:
+                    query += " AND timestamp <= ?"
+                    params.append(end_time)
+                    
+                if activity_types:
+                    placeholders = ','.join(['?' for _ in activity_types])
+                    query += f" AND activity_type IN ({placeholders})"
+                    params.extend(activity_types)
+                    
+                query += " ORDER BY timestamp DESC"
+                
+                if limit:
+                    query += " LIMIT ?"
+                    params.append(limit)
+                    
+                cursor = conn.execute(query, params)
+                rows = cursor.fetchall()
+                
+                # Convert rows to dictionaries and verify integrity
+                audit_records = []
+                for row in rows:
+                    record = dict(row)
+                    
+                    # Verify record integrity
+                    if self._verify_record_integrity(record):
+                        audit_records.append(record)
+                    else:
+                        # Log integrity violation
+                        logging.error(f"Audit integrity violation detected for record {record.get('audit_id')}")
+                        
+                return audit_records
+                
+        except Exception as e:
+            logging.error(f"Failed to retrieve audit trail: {e}")
+            return []
+            
+    def _calculate_integrity_hash(self, record: Dict[str, Any]) -> str:
+        """Calculate SHA-256 integrity hash for audit record"""
+        # Remove hash fields for calculation
+        record_copy = {k: v for k, v in record.items() 
+                      if k not in ['integrity_hash', 'previous_hash']}
+        
+        # Create deterministic string representation
+        record_string = json.dumps(record_copy, sort_keys=True, default=str)
+        
+        # Calculate SHA-256 hash
+        return hashlib.sha256(record_string.encode('utf-8')).hexdigest()
+        
+    def _verify_record_integrity(self, record: Dict[str, Any]) -> bool:
+        """Verify integrity hash of audit record"""
+        try:
+            stored_hash = record.get('integrity_hash')
+            if not stored_hash:
+                return False
+                
+            calculated_hash = self._calculate_integrity_hash(record)
+            return stored_hash == calculated_hash
+            
+        except Exception:
+            return False
+            
+    def _get_last_hash(self) -> Optional[str]:
+        """Get hash of most recent audit record"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    "SELECT integrity_hash FROM audit_activities ORDER BY id DESC LIMIT 1"
+                )
+                result = cursor.fetchone()
+                return result[0] if result else None
+                
+        except Exception:
+            return None
+            
+    def get_database_stats(self) -> Dict[str, Any]:
+        """Get comprehensive audit database statistics"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                stats = {}
+                
+                # Table counts
+                tables = ['audit_activities', 'security_events', 'compliance_events',
+                         'forensic_evidence', 'emergency_actions', 'command_validations']
+                
+                for table in tables:
+                    cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
+                    stats[f"{table}_count"] = cursor.fetchone()[0]
+                    
+                # Database size
+                stats['database_size_bytes'] = self.db_path.stat().st_size
+                stats['database_path'] = str(self.db_path)
+                
+                # Recent activity
+                cursor = conn.execute("""
+                    SELECT activity_type, COUNT(*) as count 
+                    FROM audit_activities 
+                    WHERE timestamp >= datetime('now', '-1 day')
+                    GROUP BY activity_type
+                """)
+                stats['recent_activity'] = {row[0]: row[1] for row in cursor.fetchall()}
+                
+                return stats
+                
+        except Exception as e:
+            return {'error': str(e)}
+EOF
+
+# 4. Create audit database connection manager
+cat > src/safety/audit/database/connection.py << 'EOF'
+import os
+import logging
+from pathlib import Path
+from .audit_db_manager import AuditDatabaseManager
+
+# Global audit database manager
+_audit_db_manager = None
+
+def get_audit_database_manager(audit_path: str = None) -> AuditDatabaseManager:
+    """Get singleton audit database manager"""
+    global _audit_db_manager
+    
+    if _audit_db_manager is None:
+        if audit_path is None:
+            # Auto-determine audit path
+            if os.path.exists("/var/log/kali-ai-os"):
+                audit_path = "/var/log/kali-ai-os/audit"
+            else:
+                audit_path = "/tmp/kali-ai-os-audit"
+                
+        _audit_db_manager = AuditDatabaseManager(audit_path)
+        
+    return _audit_db_manager
+
+def initialize_audit_database(audit_path: str = None, force_reset: bool = False) -> bool:
+    """Initialize audit database with comprehensive setup"""
+    try:
+        if force_reset and audit_path:
+            # Remove existing audit database for fresh start
+            db_path = Path(audit_path) / "audit.db"
+            if db_path.exists():
+                db_path.unlink()
+                logging.info("Existing audit database removed for reset")
+                
+        audit_manager = get_audit_database_manager(audit_path)
+        
+        # Test audit database operations
+        stats = audit_manager.get_database_stats()
+        logging.info(f"Audit database ready: {stats}")
+        
+        return True
+        
+    except Exception as e:
+        logging.error(f"Failed to initialize audit database: {e}")
+        return False
+
+def check_audit_database_health() -> Dict[str, Any]:
+    """Check audit database connection and health"""
+    try:
+        audit_manager = get_audit_database_manager()
+        stats = audit_manager.get_database_stats()
+        
+        return {
+            'healthy': True,
+            'statistics': stats,
+            'message': 'Audit database is healthy and secure'
+        }
+        
+    except Exception as e:
+        return {
+            'healthy': False,
+            'error': str(e),
+            'message': 'Audit database connection failed'
+        }
+EOF
+
+echo "✅ Audit database auto-setup complete!"
+```
+
+### Phase 7: Audit & Compliance System with Database Integration (1.5 hours)
 ```python
 # src/safety/audit/audit_logger.py
 import json
@@ -832,12 +1441,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
+from .database.connection import get_audit_database_manager, initialize_audit_database
+
 class AuditLogger:
     def __init__(self, audit_log_path: str = "/var/log/kali-ai-os/audit"):
         self.audit_log_path = Path(audit_log_path)
-        self.audit_log_path.mkdir(parents=True, exist_ok=True)
         
-        # Initialize audit files
+        # Initialize audit database automatically
+        if not initialize_audit_database(str(self.audit_log_path)):
+            raise Exception("Failed to initialize audit database")
+            
+        self.audit_db = get_audit_database_manager(str(self.audit_log_path))
+        
+        # Also maintain file-based logs for redundancy
+        self.audit_log_path.mkdir(parents=True, exist_ok=True)
         self.activity_log = self.audit_log_path / "activity.log"
         self.security_log = self.audit_log_path / "security.log"
         self.compliance_log = self.audit_log_path / "compliance.log"
@@ -1441,6 +2058,323 @@ SAFETY_CONFIG = {
         'retention_days': 365
     }
 }
+```
+
+## Audit Database Troubleshooting Guide
+
+### Common Audit Database Problems and Solutions:
+
+**1. Audit database not created automatically:**
+```bash
+# Check if audit directory exists
+ls -la /var/log/kali-ai-os/audit/
+
+# Check migration files exist
+ls -la src/safety/audit/database/migrations/
+
+# Manually create audit database if needed
+cd /var/log/kali-ai-os/audit/
+sqlite3 audit.db < /path/to/migrations/001_audit_schema.sql
+
+# Verify audit tables created
+sqlite3 audit.db ".tables"
+```
+
+**2. Permission errors on audit database:**
+```bash
+# Check audit directory permissions (should be 750)
+ls -ld /var/log/kali-ai-os/audit/
+
+# Check audit database permissions (should be 640)
+ls -la /var/log/kali-ai-os/audit/audit.db
+
+# Fix permissions if needed
+sudo chmod 750 /var/log/kali-ai-os/audit/
+sudo chmod 640 /var/log/kali-ai-os/audit/audit.db
+sudo chown kali:kali /var/log/kali-ai-os/audit/audit.db
+```
+
+**3. Audit database corruption or integrity issues:**
+```bash
+# Check database integrity
+sqlite3 /var/log/kali-ai-os/audit/audit.db "PRAGMA integrity_check;"
+
+# Check for tampered records (this will show records with hash mismatches)
+sqlite3 /var/log/kali-ai-os/audit/audit.db "
+SELECT audit_id, timestamp, activity_type, 'INTEGRITY_VIOLATION' as status
+FROM audit_activities 
+WHERE integrity_hash != 'recalculated_hash';
+"
+
+# Rebuild audit database if corrupted (WARNING: This removes audit history!)
+sudo mv /var/log/kali-ai-os/audit/audit.db /var/log/kali-ai-os/audit/audit.db.corrupted
+python -c "from src.safety.audit.database.connection import initialize_audit_database; initialize_audit_database('/var/log/kali-ai-os/audit', force_reset=True)"
+```
+
+**4. Application can't connect to audit database:**
+```bash
+# Test SQLite connection directly
+sqlite3 /var/log/kali-ai-os/audit/audit.db "SELECT sqlite_version();"
+
+# Test audit database manager
+python -c "
+from src.safety.audit.database.connection import check_audit_database_health
+health = check_audit_database_health()
+print(health)
+"
+
+# Check if audit database is locked
+lsof /var/log/kali-ai-os/audit/audit.db
+```
+
+**5. Audit logging fails:**
+```bash
+# Check disk space for audit logs
+df -h /var/log/
+
+# Test manual audit insertion
+sqlite3 /var/log/kali-ai-os/audit/audit.db "
+INSERT INTO audit_activities (audit_id, timestamp, activity_type, activity_data, integrity_hash) 
+VALUES ('test-' || datetime('now'), datetime('now'), 'manual_test', '{\"test\": true}', 'test_hash');
+"
+
+# Check if record was inserted
+sqlite3 /var/log/kali-ai-os/audit/audit.db "SELECT COUNT(*) FROM audit_activities WHERE activity_type='manual_test';"
+```
+
+**6. Security event logging not working:**
+```bash
+# Check security_events table exists
+sqlite3 /var/log/kali-ai-os/audit/audit.db ".schema security_events"
+
+# Test security event insertion
+python -c "
+from src.safety.audit.database.audit_db_manager import AuditDatabaseManager
+db = AuditDatabaseManager('/var/log/kali-ai-os/audit')
+event_id = db.log_security_event({
+    'type': 'test_security_event',
+    'severity': 'LOW',
+    'blocked': True
+})
+print(f'Security event logged: {event_id}')
+"
+```
+
+**7. Audit trail retrieval fails:**
+```bash
+# Check audit trail manually
+sqlite3 /var/log/kali-ai-os/audit/audit.db "
+SELECT audit_id, timestamp, activity_type, log_level 
+FROM audit_activities 
+ORDER BY timestamp DESC 
+LIMIT 10;
+"
+
+# Test Python audit trail retrieval
+python -c "
+from src.safety.audit.database.audit_db_manager import AuditDatabaseManager
+db = AuditDatabaseManager('/var/log/kali-ai-os/audit')
+trail = db.get_audit_trail(limit=5)
+print(f'Retrieved {len(trail)} audit records')
+for record in trail:
+    print(f'- {record.get(\"timestamp\")}: {record.get(\"activity_type\")}')
+"
+```
+
+**8. Forensic evidence collection fails:**
+```bash
+# Check forensic_evidence table
+sqlite3 /var/log/kali-ai-os/audit/audit.db "SELECT COUNT(*) FROM forensic_evidence;"
+
+# Test forensic evidence collection
+python -c "
+from src.safety.audit.audit_logger import AuditLogger
+logger = AuditLogger('/var/log/kali-ai-os/audit')
+evidence_id = logger.collect_forensic_evidence({
+    'incident_id': 'test_incident',
+    'type': 'test_evidence'
+})
+print(f'Forensic evidence collected: {evidence_id}')
+"
+```
+
+**9. Emergency action logging not working:**
+```bash
+# Check emergency_actions table structure
+sqlite3 /var/log/kali-ai-os/audit/audit.db ".schema emergency_actions"
+
+# Test emergency action logging
+sqlite3 /var/log/kali-ai-os/audit/audit.db "
+INSERT INTO emergency_actions (emergency_id, audit_id, trigger_reason, triggered_by, emergency_type)
+VALUES ('test-emergency', 'test-audit', 'test_trigger', 'manual_test', 'TEST_STOP');
+"
+
+# Verify emergency action was logged
+sqlite3 /var/log/kali-ai-os/audit/audit.db "SELECT * FROM emergency_actions WHERE emergency_type='TEST_STOP';"
+```
+
+**10. Performance issues with audit queries:**
+```bash
+# Analyze audit query performance
+sqlite3 /var/log/kali-ai-os/audit/audit.db "EXPLAIN QUERY PLAN SELECT * FROM audit_activities WHERE timestamp >= datetime('now', '-1 day');"
+
+# Update table statistics
+sqlite3 /var/log/kali-ai-os/audit/audit.db "ANALYZE;"
+
+# Check index usage
+sqlite3 /var/log/kali-ai-os/audit/audit.db "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%';"
+
+# Vacuum database to optimize
+sqlite3 /var/log/kali-ai-os/audit/audit.db "VACUUM;"
+```
+
+### Comprehensive Audit Database Health Check Script:
+```bash
+# Create audit health check script
+cat > check_audit_db_health.sh << 'EOF'
+#!/bin/bash
+
+AUDIT_DB_PATH="/var/log/kali-ai-os/audit/audit.db"
+
+echo "🔍 Audit Database Health Check"
+echo "=============================="
+
+# Check if audit database exists
+if [ -f "$AUDIT_DB_PATH" ]; then
+    echo "✅ Audit database exists: $AUDIT_DB_PATH"
+else
+    echo "❌ Audit database missing: $AUDIT_DB_PATH"
+    exit 1
+fi
+
+# Check file permissions (should be 640)
+PERMS=$(stat -c "%a" "$AUDIT_DB_PATH")
+echo "📋 File permissions: $PERMS"
+if [ "$PERMS" = "640" ]; then
+    echo "✅ Permissions are secure"
+else
+    echo "⚠️  Permissions should be 640 for security"
+fi
+
+# Check database size
+SIZE=$(du -sh "$AUDIT_DB_PATH" | cut -f1)
+echo "📊 Database size: $SIZE"
+
+# Test database connection
+if sqlite3 "$AUDIT_DB_PATH" "SELECT 1;" >/dev/null 2>&1; then
+    echo "✅ Database connection successful"
+else
+    echo "❌ Database connection failed"
+    exit 1
+fi
+
+# Check database integrity
+INTEGRITY=$(sqlite3 "$AUDIT_DB_PATH" "PRAGMA integrity_check;" | head -1)
+if [ "$INTEGRITY" = "ok" ]; then
+    echo "✅ Database integrity check passed"
+else
+    echo "❌ Database integrity check failed: $INTEGRITY"
+fi
+
+# Check table counts
+echo "📈 Audit table statistics:"
+sqlite3 "$AUDIT_DB_PATH" "
+SELECT 
+    'audit_activities: ' || COUNT(*) FROM audit_activities
+UNION ALL SELECT 
+    'security_events: ' || COUNT(*) FROM security_events
+UNION ALL SELECT 
+    'compliance_events: ' || COUNT(*) FROM compliance_events
+UNION ALL SELECT 
+    'forensic_evidence: ' || COUNT(*) FROM forensic_evidence
+UNION ALL SELECT 
+    'emergency_actions: ' || COUNT(*) FROM emergency_actions
+UNION ALL SELECT 
+    'command_validations: ' || COUNT(*) FROM command_validations;
+"
+
+# Check recent audit activity
+echo "⏰ Recent audit activities:"
+sqlite3 "$AUDIT_DB_PATH" "
+SELECT 
+    datetime(timestamp, 'localtime') as local_time,
+    activity_type,
+    log_level
+FROM audit_activities 
+ORDER BY timestamp DESC 
+LIMIT 5;
+"
+
+# Check for any integrity violations
+VIOLATIONS=$(sqlite3 "$AUDIT_DB_PATH" "
+SELECT COUNT(*) FROM audit_activities 
+WHERE integrity_hash = 'tampered' OR integrity_hash IS NULL;
+")
+if [ "$VIOLATIONS" -eq 0 ]; then
+    echo "✅ No integrity violations detected"
+else
+    echo "⚠️  $VIOLATIONS potential integrity violations found"
+fi
+
+# Check WAL mode (for performance)
+WAL_MODE=$(sqlite3 "$AUDIT_DB_PATH" "PRAGMA journal_mode;")
+echo "📝 Journal mode: $WAL_MODE"
+
+echo "🎉 Audit database health check complete!"
+EOF
+
+chmod +x check_audit_db_health.sh
+./check_audit_db_health.sh
+```
+
+### Emergency Audit Recovery:
+```bash
+# If audit database is completely corrupted
+cat > recover_audit_db.sh << 'EOF'
+#!/bin/bash
+
+AUDIT_DIR="/var/log/kali-ai-os/audit"
+BACKUP_DIR="/var/log/kali-ai-os/audit/backups"
+
+echo "🚨 Emergency Audit Database Recovery"
+echo "===================================="
+
+# Create backup directory
+mkdir -p "$BACKUP_DIR"
+
+# Backup corrupted database
+if [ -f "$AUDIT_DIR/audit.db" ]; then
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    cp "$AUDIT_DIR/audit.db" "$BACKUP_DIR/audit_corrupted_$TIMESTAMP.db"
+    echo "📦 Corrupted database backed up to: $BACKUP_DIR/audit_corrupted_$TIMESTAMP.db"
+fi
+
+# Try to extract any salvageable data
+echo "💾 Attempting to salvage audit data..."
+sqlite3 "$AUDIT_DIR/audit.db" .dump > "$BACKUP_DIR/audit_dump_$TIMESTAMP.sql" 2>/dev/null
+
+# Remove corrupted database
+rm -f "$AUDIT_DIR/audit.db"
+
+# Reinitialize audit database
+echo "🔧 Reinitializing audit database..."
+python3 -c "
+from src.safety.audit.database.connection import initialize_audit_database
+success = initialize_audit_database('$AUDIT_DIR', force_reset=True)
+print('✅ Audit database reinitialized' if success else '❌ Failed to reinitialize audit database')
+"
+
+# Try to restore salvaged data
+if [ -f "$BACKUP_DIR/audit_dump_$TIMESTAMP.sql" ]; then
+    echo "🔄 Attempting to restore salvaged data..."
+    sqlite3 "$AUDIT_DIR/audit.db" < "$BACKUP_DIR/audit_dump_$TIMESTAMP.sql" 2>/dev/null && echo "✅ Salvaged data restored"
+fi
+
+echo "🎉 Emergency recovery complete!"
+echo "⚠️  Please review the audit trail integrity after recovery"
+EOF
+
+chmod +x recover_audit_db.sh
 ```
 
 ## Next Steps
