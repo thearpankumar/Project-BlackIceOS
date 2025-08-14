@@ -211,6 +211,7 @@ jobs:
         context: ./auth-server
         file: ./auth-server/Dockerfile
         push: false
+        load: true
         tags: kali-auth-server:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
