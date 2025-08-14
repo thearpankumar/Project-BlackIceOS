@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr, validator
-from typing import Optional, Dict, List
 from datetime import datetime
+
+from pydantic import BaseModel, EmailStr, validator
+
 from ..core.security import password_validator
 
 
@@ -9,7 +10,7 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
-    
+
     @validator('username')
     def validate_username(cls, v):
         if not v or len(v.strip()) < 3:
@@ -19,7 +20,7 @@ class UserCreate(BaseModel):
         if not v.replace('_', '').replace('-', '').isalnum():
             raise ValueError('Username can only contain letters, numbers, hyphens, and underscores')
         return v.strip()
-    
+
     @validator('password')
     def validate_password(cls, v):
         is_valid, errors = password_validator.validate_password(v)
@@ -32,13 +33,13 @@ class UserLogin(BaseModel):
     """Model for user login"""
     username: str
     password: str
-    
+
     @validator('username')
     def validate_username(cls, v):
         if not v or len(v.strip()) < 1:
             raise ValueError('Username is required')
         return v.strip()
-    
+
     @validator('password')
     def validate_password(cls, v):
         if not v:
@@ -53,8 +54,8 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
     created_at: datetime
-    last_login: Optional[datetime] = None
-    
+    last_login: datetime | None = None
+
     class Config:
         from_attributes = True
 
@@ -66,8 +67,8 @@ class TokenResponse(BaseModel):
     expires_in: int  # seconds
     user_id: int
     username: str
-    encrypted_api_keys: Dict[str, str] = {}
-    refresh_token: Optional[str] = None
+    encrypted_api_keys: dict[str, str] = {}
+    refresh_token: str | None = None
 
 
 class RefreshTokenRequest(BaseModel):
@@ -79,14 +80,14 @@ class APIKeyCreate(BaseModel):
     """Model for adding new API key"""
     key_name: str
     api_key: str
-    
+
     @validator('key_name')
     def validate_key_name(cls, v):
         valid_providers = ["groq", "google_genai"]
         if v not in valid_providers:
             raise ValueError(f'key_name must be one of: {", ".join(valid_providers)}')
         return v
-    
+
     @validator('api_key')
     def validate_api_key_format(cls, v, values):
         if 'key_name' in values:
@@ -95,10 +96,10 @@ class APIKeyCreate(BaseModel):
                 raise ValueError('Groq API key must start with "gsk_"')
             elif key_name == "google_genai" and not v.startswith('AIza'):
                 raise ValueError('Google Generative AI API key must start with "AIza"')
-        
+
         if len(v.strip()) < 10:
             raise ValueError('API key appears to be too short')
-        
+
         return v.strip()
 
 
@@ -107,8 +108,8 @@ class APIKeyResponse(BaseModel):
     id: int
     key_name: str
     created_at: datetime
-    last_used: Optional[datetime] = None
-    
+    last_used: datetime | None = None
+
     class Config:
         from_attributes = True
 
@@ -116,7 +117,7 @@ class APIKeyResponse(BaseModel):
 class APIKeyUpdate(BaseModel):
     """Model for updating API key"""
     api_key: str
-    
+
     @validator('api_key')
     def validate_api_key(cls, v):
         if len(v.strip()) < 10:
@@ -128,13 +129,13 @@ class PasswordChange(BaseModel):
     """Model for password change"""
     current_password: str
     new_password: str
-    
+
     @validator('current_password')
     def validate_current_password(cls, v):
         if not v:
             raise ValueError('Current password is required')
         return v
-    
+
     @validator('new_password')
     def validate_new_password(cls, v):
         is_valid, errors = password_validator.validate_password(v)
@@ -145,8 +146,8 @@ class PasswordChange(BaseModel):
 
 class UserUpdate(BaseModel):
     """Model for updating user profile"""
-    email: Optional[EmailStr] = None
-    
+    email: EmailStr | None = None
+
     @validator('email', pre=True, always=True)
     def validate_email(cls, v):
         if v is not None and not v.strip():
@@ -159,10 +160,10 @@ class SessionResponse(BaseModel):
     id: int
     created_at: datetime
     expires_at: datetime
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    ip_address: str | None = None
+    user_agent: str | None = None
     is_current: bool = False
-    
+
     class Config:
         from_attributes = True
 
@@ -174,15 +175,15 @@ class HealthCheckResponse(BaseModel):
     version: str
     service: str
     timestamp: datetime
-    uptime_seconds: Optional[int] = None
+    uptime_seconds: int | None = None
 
 
 class ErrorResponse(BaseModel):
     """Model for error responses"""
     detail: str
-    error_code: Optional[str] = None
+    error_code: str | None = None
     timestamp: datetime
-    
+
     class Config:
         schema_extra = {
             "example": {
@@ -195,9 +196,9 @@ class ErrorResponse(BaseModel):
 
 class ValidationErrorResponse(BaseModel):
     """Model for validation error responses"""
-    detail: List[Dict[str, str]]
+    detail: list[dict[str, str]]
     error_type: str = "validation_error"
-    
+
     class Config:
         schema_extra = {
             "example": {
@@ -215,7 +216,7 @@ class ValidationErrorResponse(BaseModel):
 
 class APIKeyListResponse(BaseModel):
     """Model for list of API keys response"""
-    api_keys: List[APIKeyResponse]
+    api_keys: list[APIKeyResponse]
     total_count: int
 
 
@@ -223,7 +224,7 @@ class UserStatsResponse(BaseModel):
     """Model for user statistics"""
     total_api_keys: int
     active_sessions: int
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
     account_created: datetime
     groq_key_configured: bool = False
     google_genai_key_configured: bool = False

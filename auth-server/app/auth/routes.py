@@ -1,21 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from typing import List, Dict, Any
 import logging
+from datetime import datetime, timedelta
 
-from app.database.connection import get_database
-from app.database.models import User, APIKey, Session as UserSession
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
+
+from app.auth.dependencies import get_current_active_user
 from app.auth.models import (
-    UserCreate, UserLogin, UserResponse, TokenResponse, 
-    APIKeyCreate, APIKeyResponse, APIKeyUpdate, APIKeyListResponse,
-    PasswordChange, UserUpdate, SessionResponse, UserStatsResponse
+    APIKeyCreate,
+    APIKeyListResponse,
+    APIKeyResponse,
+    PasswordChange,
+    SessionResponse,
+    TokenResponse,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    UserStatsResponse,
+    UserUpdate,
 )
 from app.core.security import (
-    create_access_token, verify_token, hash_password, verify_password
+    create_access_token,
+    hash_password,
+    verify_password,
 )
-from app.utils.encryption import encrypt_api_key, decrypt_api_key
-from app.auth.dependencies import get_current_user, get_current_active_user
+from app.database.connection import get_database
+from app.database.models import APIKey, User
+from app.database.models import Session as UserSession
+from app.utils.encryption import encrypt_api_key
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -39,12 +50,12 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_databas
         HTTPException: If username or email already exists
     """
     logger.info(f"Registration attempt for username: {user_data.username}")
-    
+
     # Check if user already exists
     existing_user = db.query(User).filter(
         (User.username == user_data.username) | (User.email == user_data.email)
     ).first()
-    
+
     if existing_user:
         if existing_user.username == user_data.username:
             raise HTTPException(
@@ -56,38 +67,38 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_databas
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
-    
+
     # Hash password
     password_hash = hash_password(user_data.password)
-    
+
     # Create new user
     new_user = User(
         username=user_data.username,
         email=user_data.email,
         password_hash=password_hash
     )
-    
+
     try:
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        
+
         logger.info(f"User registered successfully: {new_user.username} (ID: {new_user.id})")
-        
+
         return UserResponse.from_orm(new_user)
-    
+
     except Exception as e:
         db.rollback()
         logger.error(f"Registration failed for {user_data.username}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed. Please try again."
-        )
+        ) from e
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login_user(
-    credentials: UserLogin, 
+    credentials: UserLogin,
     request: Request,
     db: Session = Depends(get_database)
 ):
@@ -106,17 +117,17 @@ async def login_user(
         HTTPException: If credentials are invalid
     """
     logger.info(f"Login attempt for username: {credentials.username}")
-    
+
     # Find user
     user = db.query(User).filter(User.username == credentials.username).first()
-    
+
     if not user or not user.is_active:
         logger.warning(f"Login failed - user not found or inactive: {credentials.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    
+
     # Verify password
     if not verify_password(credentials.password, user.password_hash):
         logger.warning(f"Login failed - invalid password for: {credentials.username}")
@@ -124,15 +135,15 @@ async def login_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    
+
     try:
         # Update last login
         user.last_login = datetime.utcnow()
-        
+
         # Generate JWT token
         token_data = {"sub": str(user.id), "username": user.username}
         access_token = create_access_token(data=token_data)
-        
+
         # Create session record
         expires_at = datetime.utcnow() + timedelta(hours=24)  # Token expiration
         session = UserSession(
@@ -143,11 +154,11 @@ async def login_user(
             user_agent=request.headers.get("user-agent")
         )
         db.add(session)
-        
+
         # Get user's API keys (encrypted)
         api_keys = db.query(APIKey).filter(APIKey.user_id == user.id).all()
         encrypted_keys = {}
-        
+
         for key in api_keys:
             try:
                 # Keys are already encrypted in database, just return them
@@ -156,11 +167,11 @@ async def login_user(
                 key.last_used = datetime.utcnow()
             except Exception as e:
                 logger.warning(f"Failed to process API key {key.key_name} for user {user.id}: {e}")
-        
+
         db.commit()
-        
+
         logger.info(f"User logged in successfully: {user.username} (ID: {user.id})")
-        
+
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
@@ -169,7 +180,7 @@ async def login_user(
             username=user.username,
             encrypted_api_keys=encrypted_keys
         )
-    
+
     except Exception as e:
         db.rollback()
         logger.error(f"Login processing failed for {credentials.username}: {e}")
@@ -242,22 +253,22 @@ async def update_user_profile(
                 User.email == user_update.email,
                 User.id != current_user.id
             ).first()
-            
+
             if existing_user:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email already registered by another user"
                 )
-            
+
             current_user.email = user_update.email
-        
+
         db.commit()
         db.refresh(current_user)
-        
+
         logger.info(f"User profile updated: {current_user.username} (ID: {current_user.id})")
-        
+
         return UserResponse.from_orm(current_user)
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -292,18 +303,18 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
         )
-    
+
     try:
         # Hash new password
         new_password_hash = hash_password(password_change.new_password)
         current_user.password_hash = new_password_hash
-        
+
         db.commit()
-        
+
         logger.info(f"Password changed for user: {current_user.username} (ID: {current_user.id})")
-        
+
         return {"message": "Password changed successfully"}
-    
+
     except Exception as e:
         db.rollback()
         logger.error(f"Password change failed for user {current_user.id}: {e}")
@@ -336,19 +347,19 @@ async def add_api_key(
             APIKey.user_id == current_user.id,
             APIKey.key_name == api_key_data.key_name
         ).first()
-        
+
         # Encrypt the API key
         encrypted_key = encrypt_api_key(api_key_data.api_key)
-        
+
         if existing_key:
             # Update existing key
             existing_key.encrypted_key = encrypted_key
             existing_key.last_used = None  # Reset usage timestamp
             db.commit()
             db.refresh(existing_key)
-            
+
             logger.info(f"API key updated for user {current_user.id}: {api_key_data.key_name}")
-            
+
             return APIKeyResponse.from_orm(existing_key)
         else:
             # Create new API key
@@ -357,15 +368,15 @@ async def add_api_key(
                 key_name=api_key_data.key_name,
                 encrypted_key=encrypted_key
             )
-            
+
             db.add(new_api_key)
             db.commit()
             db.refresh(new_api_key)
-            
+
             logger.info(f"API key added for user {current_user.id}: {api_key_data.key_name}")
-            
+
             return APIKeyResponse.from_orm(new_api_key)
-    
+
     except Exception as e:
         db.rollback()
         logger.error(f"API key creation/update failed for user {current_user.id}: {e}")
@@ -391,7 +402,7 @@ async def get_user_api_keys(
         APIKeyListResponse: List of user's API keys
     """
     api_keys = db.query(APIKey).filter(APIKey.user_id == current_user.id).all()
-    
+
     return APIKeyListResponse(
         api_keys=[APIKeyResponse.from_orm(key) for key in api_keys],
         total_count=len(api_keys)
@@ -421,26 +432,26 @@ async def delete_api_key(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid API key name"
         )
-    
+
     api_key = db.query(APIKey).filter(
         APIKey.user_id == current_user.id,
         APIKey.key_name == key_name
     ).first()
-    
+
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"API key '{key_name}' not found"
         )
-    
+
     try:
         db.delete(api_key)
         db.commit()
-        
+
         logger.info(f"API key deleted for user {current_user.id}: {key_name}")
-        
+
         return {"message": f"API key '{key_name}' deleted successfully"}
-    
+
     except Exception as e:
         db.rollback()
         logger.error(f"API key deletion failed for user {current_user.id}: {e}")
@@ -450,7 +461,7 @@ async def delete_api_key(
         )
 
 
-@router.get("/sessions", response_model=List[SessionResponse])
+@router.get("/sessions", response_model=list[SessionResponse])
 async def get_user_sessions(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_database)
@@ -469,7 +480,7 @@ async def get_user_sessions(
         UserSession.user_id == current_user.id,
         UserSession.expires_at > datetime.utcnow()
     ).order_by(UserSession.created_at.desc()).all()
-    
+
     # Mark current session (this is simplified - in practice you'd compare tokens)
     session_responses = []
     for session in sessions:
@@ -477,7 +488,7 @@ async def get_user_sessions(
         # You could implement logic to identify current session here
         session_response.is_current = False
         session_responses.append(session_response)
-    
+
     return session_responses
 
 
@@ -502,21 +513,21 @@ async def revoke_session(
         UserSession.id == session_id,
         UserSession.user_id == current_user.id
     ).first()
-    
+
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found"
         )
-    
+
     try:
         db.delete(session)
         db.commit()
-        
+
         logger.info(f"Session revoked for user {current_user.id}: session {session_id}")
-        
+
         return {"message": "Session revoked successfully"}
-    
+
     except Exception as e:
         db.rollback()
         logger.error(f"Session revocation failed for user {current_user.id}: {e}")
@@ -543,18 +554,18 @@ async def get_user_stats(
     """
     # Count API keys
     total_api_keys = db.query(APIKey).filter(APIKey.user_id == current_user.id).count()
-    
+
     # Count active sessions
     active_sessions = db.query(UserSession).filter(
         UserSession.user_id == current_user.id,
         UserSession.expires_at > datetime.utcnow()
     ).count()
-    
+
     # Check which API keys are configured
     api_keys = db.query(APIKey).filter(APIKey.user_id == current_user.id).all()
     groq_configured = any(key.key_name == "groq" for key in api_keys)
     google_genai_configured = any(key.key_name == "google_genai" for key in api_keys)
-    
+
     return UserStatsResponse(
         total_api_keys=total_api_keys,
         active_sessions=active_sessions,

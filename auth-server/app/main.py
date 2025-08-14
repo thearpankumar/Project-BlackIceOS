@@ -1,18 +1,23 @@
-from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
 import logging
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Dict, Any
+
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.auth import routes as auth_routes
+from app.auth.models import HealthCheckResponse
+from app.core.config import settings
 
 # Import application components
-from app.database.connection import initialize_database, check_database_health, cleanup_expired_sessions
-from app.core.config import settings
-from app.auth import routes as auth_routes
-from app.auth.models import HealthCheckResponse, ErrorResponse
+from app.database.connection import (
+    check_database_health,
+    cleanup_expired_sessions,
+    initialize_database,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -37,43 +42,43 @@ async def lifespan(app: FastAPI):
     """
     # Startup tasks
     logger.info("Starting Kali AI-OS Authentication Server...")
-    
+
     try:
         # Initialize database (create tables if needed)
         if not initialize_database():
             logger.error("Database initialization failed")
             raise Exception("Cannot start server - database initialization failed")
-        
+
         # Perform initial health check
         if not check_database_health():
             logger.error("Database health check failed")
             raise Exception("Cannot start server - database unavailable")
-        
+
         # Clean up expired sessions on startup
         expired_count = cleanup_expired_sessions()
         if expired_count > 0:
             logger.info(f"Cleaned up {expired_count} expired sessions on startup")
-        
+
         logger.info("Authentication server started successfully")
         logger.info(f"Server configuration: DEBUG={settings.DEBUG}, CORS={settings.ALLOWED_ORIGINS}")
-        
+
     except Exception as e:
         logger.error(f"Startup failed: {e}")
         raise
-    
+
     yield
-    
+
     # Shutdown tasks
     logger.info("Shutting down authentication server...")
-    
+
     try:
         # Clean up expired sessions before shutdown
         expired_count = cleanup_expired_sessions()
         if expired_count > 0:
             logger.info(f"Cleaned up {expired_count} expired sessions on shutdown")
-        
+
         logger.info("Authentication server shutdown completed")
-    
+
     except Exception as e:
         logger.error(f"Shutdown error: {e}")
 
@@ -102,22 +107,22 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     """Log all incoming requests with timing information"""
     start_time = time.time()
-    
+
     # Log request
     logger.info(f"{request.method} {request.url.path} - {request.client.host if request.client else 'unknown'}")
-    
+
     try:
         response = await call_next(request)
-        
+
         # Log response
         process_time = time.time() - start_time
         logger.info(f"{request.method} {request.url.path} - {response.status_code} - {process_time:.3f}s")
-        
+
         # Add timing header
         response.headers["X-Process-Time"] = str(process_time)
-        
+
         return response
-    
+
     except Exception as e:
         process_time = time.time() - start_time
         logger.error(f"{request.method} {request.url.path} - ERROR - {process_time:.3f}s - {str(e)}")
@@ -129,7 +134,7 @@ async def log_requests(request: Request, call_next):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors with detailed messages"""
     logger.warning(f"Validation error on {request.url.path}: {exc.errors()}")
-    
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
@@ -144,7 +149,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def internal_server_error_handler(request: Request, exc: Exception):
     """Handle internal server errors"""
     logger.error(f"Internal server error on {request.url.path}: {str(exc)}")
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
@@ -166,7 +171,7 @@ async def health_check():
     """
     db_healthy = check_database_health()
     uptime_seconds = int(time.time() - startup_time)
-    
+
     return HealthCheckResponse(
         status="healthy" if db_healthy else "degraded",
         database="connected" if db_healthy else "disconnected",
@@ -187,9 +192,9 @@ async def database_status():
         dict: Database status and information
     """
     from app.database.connection import get_database_info
-    
+
     db_info = get_database_info()
-    
+
     return {
         "database_connected": db_info["healthy"],
         "database_type": db_info["type"],
@@ -238,7 +243,7 @@ async def system_info():
         dict: System information
     """
     uptime_seconds = int(time.time() - startup_time)
-    
+
     return {
         "service": "kali-ai-os-auth",
         "version": "1.0.0",
@@ -268,9 +273,10 @@ async def admin_stats():
     Returns:
         dict: System statistics (implement admin authentication as needed)
     """
-    from app.database.models import User, APIKey, Session as UserSession
     from app.database.connection import SessionLocal
-    
+    from app.database.models import APIKey, User
+    from app.database.models import Session as UserSession
+
     db = SessionLocal()
     try:
         total_users = db.query(User).count()
@@ -279,7 +285,7 @@ async def admin_stats():
         total_sessions = db.query(UserSession).filter(
             UserSession.expires_at > datetime.utcnow()
         ).count()
-        
+
         return {
             "total_users": total_users,
             "active_users": active_users,
@@ -289,14 +295,14 @@ async def admin_stats():
             "uptime_hours": (time.time() - startup_time) / 3600,
             "timestamp": datetime.utcnow().isoformat()
         }
-    
+
     finally:
         db.close()
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Run server
     uvicorn.run(
         "app.main:app",
