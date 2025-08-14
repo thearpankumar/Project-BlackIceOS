@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
@@ -202,7 +202,7 @@ class TestDatabaseModels:
         session = UserSession(
             user_id=user.id,
             session_token="jwt_token_123456789",
-            expires_at=datetime.utcnow() + timedelta(hours=24),
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
             ip_address="192.168.1.100",
             user_agent="Mozilla/5.0 Test Agent",
         )
@@ -214,7 +214,7 @@ class TestDatabaseModels:
         assert session.id is not None
         assert session.user_id == user.id
         assert session.session_token == "jwt_token_123456789"
-        assert session.expires_at > datetime.utcnow()
+        assert session.expires_at > datetime.now(UTC).replace(tzinfo=None)
         assert session.ip_address == "192.168.1.100"
         assert session.user_agent == "Mozilla/5.0 Test Agent"
         assert session.created_at is not None
@@ -241,7 +241,7 @@ class TestDatabaseModels:
         session = UserSession(
             user_id=user.id,
             session_token="token_123",
-            expires_at=datetime.utcnow() + timedelta(hours=1),
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
         )
         db_session.add(session)
         db_session.commit()
@@ -290,7 +290,7 @@ class TestDatabaseOperations:
 
         # Update
         retrieved_user.email = "updated@example.com"
-        retrieved_user.last_login = datetime.utcnow()
+        retrieved_user.last_login = datetime.now(UTC)
         db_session.commit()
 
         updated_user = db_session.query(User).filter(User.id == user_id).first()
@@ -325,7 +325,7 @@ class TestDatabaseOperations:
         assert api_key.last_used is None
 
         # Update last_used
-        api_key.last_used = datetime.utcnow()
+        api_key.last_used = datetime.now(UTC)
         db_session.commit()
 
         # Verify update
@@ -349,14 +349,14 @@ class TestDatabaseOperations:
         expired_session = UserSession(
             user_id=user.id,
             session_token="expired_token",
-            expires_at=datetime.utcnow() - timedelta(hours=1),  # Expired
+            expires_at=datetime.now(UTC) - timedelta(hours=1),  # Expired
         )
 
         # Create valid session
         valid_session = UserSession(
             user_id=user.id,
             session_token="valid_token",
-            expires_at=datetime.utcnow() + timedelta(hours=1),  # Valid
+            expires_at=datetime.now(UTC) + timedelta(hours=1),  # Valid
         )
 
         db_session.add(expired_session)
@@ -364,7 +364,7 @@ class TestDatabaseOperations:
         db_session.commit()
 
         # Query expired sessions
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expired_sessions = (
             db_session.query(UserSession).filter(UserSession.expires_at < now).all()
         )

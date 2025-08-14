@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -87,7 +87,7 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_databas
             f"User registered successfully: {new_user.username} (ID: {new_user.id})"
         )
 
-        return UserResponse.from_orm(new_user)
+        return UserResponse.model_validate(new_user)
 
     except Exception as e:
         db.rollback()
@@ -138,14 +138,14 @@ async def login_user(
 
     try:
         # Update last login
-        user.last_login = datetime.utcnow()  # type: ignore
+        user.last_login = datetime.now(UTC)  # type: ignore
 
         # Generate JWT token
         token_data = {"sub": str(user.id), "username": user.username}
         access_token = create_access_token(data=token_data)
 
         # Create session record
-        expires_at = datetime.utcnow() + timedelta(hours=24)  # Token expiration
+        expires_at = datetime.now(UTC) + timedelta(hours=24)  # Token expiration
         session = UserSession(
             user_id=user.id,
             session_token=access_token,
@@ -164,7 +164,7 @@ async def login_user(
                 # Keys are already encrypted in database, just return them
                 encrypted_keys[key.key_name] = key.encrypted_key  # type: ignore
                 # Update last_used timestamp
-                key.last_used = datetime.utcnow()  # type: ignore
+                key.last_used = datetime.now(UTC)  # type: ignore
             except Exception as e:
                 logger.warning(
                     f"Failed to process API key {key.key_name} for user {user.id}: {e}"
@@ -223,7 +223,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_active_
     Returns:
         UserResponse: User information
     """
-    return UserResponse.from_orm(current_user)
+    return UserResponse.model_validate(current_user)
 
 
 @router.put("/me", response_model=UserResponse)
@@ -267,7 +267,7 @@ async def update_user_profile(
             f"User profile updated: {current_user.username} (ID: {current_user.id})"
         )
 
-        return UserResponse.from_orm(current_user)
+        return UserResponse.model_validate(current_user)
 
     except HTTPException:
         raise
@@ -373,7 +373,7 @@ async def add_api_key(
                 f"API key updated for user {current_user.id}: {api_key_data.key_name}"
             )
 
-            return APIKeyResponse.from_orm(existing_key)
+            return APIKeyResponse.model_validate(existing_key)
         else:
             # Create new API key
             new_api_key = APIKey(
@@ -390,7 +390,7 @@ async def add_api_key(
                 f"API key added for user {current_user.id}: {api_key_data.key_name}"
             )
 
-            return APIKeyResponse.from_orm(new_api_key)
+            return APIKeyResponse.model_validate(new_api_key)
 
     except Exception as e:
         db.rollback()
@@ -419,7 +419,7 @@ async def get_user_api_keys(
     api_keys = db.query(APIKey).filter(APIKey.user_id == current_user.id).all()
 
     return APIKeyListResponse(
-        api_keys=[APIKeyResponse.from_orm(key) for key in api_keys],
+        api_keys=[APIKeyResponse.model_validate(key) for key in api_keys],
         total_count=len(api_keys),
     )
 
@@ -495,7 +495,7 @@ async def get_user_sessions(
         db.query(UserSession)
         .filter(
             UserSession.user_id == current_user.id,
-            UserSession.expires_at > datetime.utcnow(),
+            UserSession.expires_at > datetime.now(UTC),
         )
         .order_by(UserSession.created_at.desc())
         .all()
@@ -504,7 +504,7 @@ async def get_user_sessions(
     # Mark current session (this is simplified - in practice you'd compare tokens)
     session_responses = []
     for session in sessions:
-        session_response = SessionResponse.from_orm(session)
+        session_response = SessionResponse.model_validate(session)
         # You could implement logic to identify current session here
         session_response.is_current = False
         session_responses.append(session_response)
@@ -580,7 +580,7 @@ async def get_user_stats(
         db.query(UserSession)
         .filter(
             UserSession.user_id == current_user.id,
-            UserSession.expires_at > datetime.utcnow(),
+            UserSession.expires_at > datetime.now(UTC),
         )
         .count()
     )

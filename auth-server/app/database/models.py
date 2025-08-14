@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
@@ -93,10 +93,10 @@ class Session(Base):
     @property
     def is_expired(self) -> bool:
         """Check if session is expired"""
-        return datetime.utcnow() > self.expires_at if self.expires_at else True  # type: ignore
+        return datetime.now(UTC) > self.expires_at if self.expires_at else True  # type: ignore
 
     def extend_session(self, hours: int = 24):
         """Extend session expiration time"""
         from datetime import timedelta
 
-        self.expires_at = datetime.utcnow() + timedelta(hours=hours)  # type: ignore[assignment]
+        self.expires_at = datetime.now(UTC) + timedelta(hours=hours)  # type: ignore[assignment]
