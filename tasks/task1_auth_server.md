@@ -1138,7 +1138,7 @@ docker exec $(docker ps -q -f name=postgres) pg_dump -U kali_auth kali_auth_db >
 ```bash
 # Package Management
 uv add fastapi                    # Add production dependency
-uv add pytest --dev             # Add development dependency  
+uv add pytest --dev             # Add development dependency
 uv remove package-name          # Remove dependency
 uv sync --all-extras            # Install all dependencies including dev
 uv sync --no-dev               # Install only production dependencies
@@ -1179,7 +1179,7 @@ uv add pytest ruff black isort mypy --dev
 # 2. Daily Development Cycle
 uv sync --all-extras                   # Sync dependencies
 uv run --env-file .env pytest tests/ -v # Run tests
-uv run ruff check . --fix              # Fix linting issues  
+uv run ruff check . --fix              # Fix linting issues
 uv run black .                         # Format code
 uv run mypy app/                       # Type check
 
@@ -1247,7 +1247,7 @@ target-version = ['py311']
 
 ✅ **Developer Experience:**
 - Single tool for all Python package management
-- Automatic virtual environment management  
+- Automatic virtual environment management
 - Built-in project initialization
 - Comprehensive dependency management
 
