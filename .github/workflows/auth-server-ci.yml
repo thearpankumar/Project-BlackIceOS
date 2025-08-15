@@ -220,7 +220,7 @@ jobs:
       run: |
         # Generate test encryption key
         ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')
-        
+
         # Test that the image can be built and basic imports work
         docker run --rm \
           -e ENCRYPTION_KEY="$ENCRYPTION_KEY" \

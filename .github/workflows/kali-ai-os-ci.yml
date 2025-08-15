@@ -1,0 +1,79 @@
+name: Kali AI OS CI/CD
+
+on:
+  push:
+    branches: [ master, main, develop ]
+    paths:
+      - 'kali-ai-os/**'
+      - '.github/workflows/kali-ai-os-ci.yml'
+  pull_request:
+    branches: [ master, main, develop ]
+    paths:
+      - 'kali-ai-os/**'
+      - '.github/workflows/kali-ai-os-ci.yml'
+
+defaults:
+  run:
+    working-directory: kali-ai-os
+
+jobs:
+  lint-and-format:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "0.4.18"
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: uv sync --all-extras
+
+    - name: Run ruff linter
+      run: uv run ruff check . --output-format=github
+
+    - name: Run black formatter check
+      run: uv run black --check --diff .
+
+    - name: Run isort import sorting check
+      run: uv run isort --check-only --diff .
+
+    - name: Run mypy type checking
+      run: uv run mypy src/ --ignore-missing-imports
+      continue-on-error: true
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: lint-and-format
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@vv4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "0.4.18"
+        enable-cache: true
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --all-extras
+
+    - name: Run tests
+      run: uv run pytest tests/ --verbose --tb=short

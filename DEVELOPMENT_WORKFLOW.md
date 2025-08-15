@@ -142,7 +142,7 @@ git add .
 
 # Pre-commit will auto-run these checks:
 # - ruff (linting & fixing)
-# - black (formatting) 
+# - black (formatting)
 # - isort (import sorting)
 # - mypy (type checking)
 # - bandit (security)
@@ -254,7 +254,7 @@ Follow conventional commits:
 
 ```bash
 feat: add user registration endpoint
-fix: resolve database connection timeout  
+fix: resolve database connection timeout
 docs: update API documentation
 test: add integration tests for auth
 style: fix code formatting
@@ -312,7 +312,7 @@ Before creating a Pull Request, ensure:
 - [ ] **Tests pass**: `uv run --env-file ../.env pytest tests/ --cov=app --cov-fail-under=50`
 - [ ] **Linting**: `uv run ruff check . --fix` (no remaining issues)
 - [ ] **Formatting**: `uv run black .` (all files formatted)
-- [ ] **Import sorting**: `uv run isort .` (imports properly sorted)  
+- [ ] **Import sorting**: `uv run isort .` (imports properly sorted)
 - [ ] **Type checking**: `uv run mypy app/ --ignore-missing-imports` (no type errors)
 - [ ] **Security**: `uv run bandit -r app/` (no security issues)
 - [ ] **Pre-commit**: `uv run --env-file ../.env pre-commit run --all-files --config ../.pre-commit-config.yaml` passes
@@ -332,7 +332,7 @@ ENCRYPTION_KEY=your-32-byte-base64-fernet-key
 
 # Optional
 DEBUG=false
-HOST=0.0.0.0  
+HOST=0.0.0.0
 PORT=8000
 ALLOWED_ORIGINS=["https://yourdomain.com"]
 ```
@@ -364,9 +364,9 @@ docker run -p 8000:8000 \
 
 ---
 
-**Need help?** 
+**Need help?**
 - Check existing GitHub issues
-- Review error logs with `docker compose logs auth-server`  
+- Review error logs with `docker compose logs auth-server`
 - Run diagnostics with `uv run --env-file ../.env pytest tests/ -v --tb=long`
 - Create a detailed issue with reproduction steps
 

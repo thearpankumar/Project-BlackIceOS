@@ -907,12 +907,13 @@ class EndToEndWorkflowTester:
     async def test_voice_to_scan_workflow(self):
         """Test complete voice-driven security scan"""
 
-        # Simulate voice input
-        voice_command = "scan example.com for vulnerabilities"
+        # Simulate voice input via a pre-recorded audio file
+        # In a real test, this file would contain a spoken command.
+        voice_input_file = "tests/integration/audio_samples/scan_example_com.wav"
 
         workflow_request = {
             'input_type': 'voice',
-            'voice_input': voice_command,
+            'voice_input_path': voice_input_file, # Path to audio file
             'user_id': 'test_user',
             'session_id': 'test_session',
             'authorization': {
@@ -932,10 +933,10 @@ class EndToEndWorkflowTester:
         assert 'tools_used' in result
         assert 'results' in result
 
-        # Validate performance metrics
+        # Validate performance metrics (adjusted for online STT)
         metrics = result['performance_metrics']
         assert metrics['total_execution_time'] < 60  # Should complete in under 60 seconds
-        assert metrics['voice_processing_time'] < 2   # Voice processing under 2 seconds
+        assert metrics['voice_processing_time'] < 5   # Voice processing under 5 seconds
         assert metrics['ai_processing_time'] < 10     # AI processing under 10 seconds
 
         # Validate results structure

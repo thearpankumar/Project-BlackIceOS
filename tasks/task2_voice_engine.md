@@ -1,33 +1,33 @@
 # Task 2: Voice Recognition Engine
 
 ## What This Task Is About
-This task creates the voice interface for Kali AI-OS that enables natural language interaction with security tools:
-- **Voice-to-Text Recognition** using Vosk (offline, no internet required)
-- **Cybersecurity Vocabulary** for accurate recognition of security terms like "nmap", "burpsuite", "metasploit"
-- **Wake Word Detection** to activate AI without manual input ("Hey Kali", "Security AI")
-- **Noise Filtering** for use in various environments (offices, coffee shops, conferences)
-- **Real-time Processing** with low latency for responsive interaction
+This task creates the voice interface for Kali AI-OS that enables natural language interaction with security tools. The implementation uses an online service for high-accuracy speech recognition, a local wake word engine, and a local engine for voice feedback.
+- **Wake Word Detection** using `pvporcupine` to activate the AI without manual input (e.g., "Computer").
+- **Voice-to-Text Recognition** using `google-generativeai` for highly accurate, online transcription.
+- **Local Audio Recording** to capture the user's voice commands directly from the microphone after the wake word is detected.
+- **Local Text-to-Speech** using the system's native voice engine via `pyttsx3` for feedback.
+- **Intelligent Command Parsing** where the powerful `google-generativeai` model directly interprets security terms and extracts parameters, removing the need for a custom cybersecurity vocabulary.
 
 ## Why This Task Is Critical
-- **Natural Interface**: Enables hands-free operation during security assessments
-- **Accessibility**: Voice commands are faster than typing complex security tool syntax
-- **Multitasking**: Users can continue working while giving voice commands
-- **Unique Selling Point**: First voice-controlled cybersecurity OS
+- **Natural Interface**: Enables hands-free operation during security assessments.
+- **Accessibility**: Voice commands are faster than typing complex security tool syntax.
+- **Multitasking**: Users can continue working while giving voice commands.
+- **Unique Selling Point**: A voice-controlled cybersecurity OS.
 
 ## How to Complete This Task - Step by Step
 
 ### Phase 1: Setup Voice Environment (45 minutes)
 ```bash
-# 1. Install system audio dependencies (run in VM)
+# 1. Install system audio dependencies (in VM)
 sudo apt update
 sudo apt install -y pulseaudio pulseaudio-utils alsa-utils
 sudo apt install -y portaudio19-dev python3-pyaudio
-sudo apt install -y espeak espeak-data libespeak-dev
+sudo apt install -y espeak espeak-data libespeak-dev # For pyttsx3
 
 # 2. Setup Python environment with uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
-uv add vosk pyaudio speech-recognition
-uv add pytest pytest-asyncio --dev
+uv add google-generativeai sounddevice scipy numpy pyttsx3 python-dotenv pvporcupine pyaudio
+uv add pytest pytest-asyncio pytest-mock --dev
 uv sync --all-extras
 
 # 3. Test audio system
@@ -35,157 +35,105 @@ arecord -l  # List recording devices
 aplay -l   # List playback devices
 arecord -f cd -t wav -d 5 test.wav && aplay test.wav  # Test microphone
 
-# 4. Download Vosk model
-cd kali-ai-os/src/voice/models/
-wget https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip
-unzip vosk-model-en-us-0.22.zip
-mv vosk-model-en-us-0.22 vosk-model-en-us
+# 4. Configure API Keys for Development
+# In the final system, API keys will be provided by the auth server.
+# For local development, you will need to create a .env file in the project root.
+# The auth server task (.env.example) defines the production variables.
+# For this task, you can create a separate .env with these keys:
+echo 'GOOGLE_AI_API_KEY="YOUR_GOOGLE_AI_API_KEY"' > .env
+echo 'PICOVOICE_ACCESS_KEY="YOUR_PICOVOICE_ACCESS_KEY"' >> .env
+# Get a free PicoVoice Access Key from https://console.picovoice.ai/
 ```
 
 ### Phase 2: Write Voice Tests First (1 hour)
 ```python
 # tests/voice/test_recognition.py - Create comprehensive tests
-def test_basic_speech_recognition():
-    """Test basic speech-to-text works"""
-    # Test with clean audio sample
+import pytest
+from unittest.mock import patch, MagicMock
 
-def test_cybersecurity_term_recognition():
-    """Test recognition of security terms"""
-    # Test: "nmap", "burpsuite", "metasploit", "wireshark"
+def test_wake_word_detection_initialization():
+    """Test that the wake word detector initializes correctly."""
+    # This test would verify that pvporcupine is called with the correct keys.
 
-def test_wake_word_detection():
-    """Test wake word detection accuracy"""
-    # Test: "hey kali", "kali ai", "security ai"
+@patch('sounddevice.rec')
+@patch('sounddevice.wait')
+def test_audio_recording(mock_wait, mock_rec):
+    """Test that audio is recorded correctly from the microphone."""
+    # Test recording a short audio clip and verify the file is created and parameters are correct.
 
-def test_noise_filtering():
-    """Test noise reduction improves accuracy"""
-    # Test with noisy vs clean audio
+def test_speech_to_text_transcription():
+    """Test basic speech-to-text with Google GenAI."""
+    # Test with a pre-recorded audio sample of a security command.
 
-def test_parameter_extraction():
-    """Test extracting IPs, URLs, ports from voice"""
-    # Test: "scan 192.168.1.1 for open ports"
+def test_local_text_to_speech_generation():
+    """Test local text-to-speech generation."""
+    # Test that pyttsx3 can generate audible speech from text.
 ```
 
-### Phase 3: Core Voice Recognition (2 hours)
+### Phase 3: Core Implementation (3 hours)
 ```python
-# src/voice/recognition/vosk_engine.py
-import vosk
-import json
-import pyaudio
-
-class VoskSTTEngine:
-    def __init__(self, model_path):
-        self.model = vosk.Model(model_path)
-        self.rec = vosk.KaldiRecognizer(self.model, 16000)
-
-    def transcribe_real_time(self, audio_stream):
-        # Implement real-time transcription
-        # Return: {"text": "scan example.com", "confidence": 0.95}
-
-    def transcribe_file(self, audio_file):
-        # Implement file-based transcription for testing
-        # Return: {"text": "...", "confidence": 0.85, "success": True}
-```
-
-### Phase 4: Cybersecurity Vocabulary (1 hour)
-```python
-# src/voice/vocabulary/cybersec_terms.py
-class CybersecurityVocabulary:
-    def __init__(self):
-        self.security_tools = {
-            # Common voice recognition errors -> correct terms
-            "map": "nmap",
-            "burp sweet": "burpsuite",
-            "wire shark": "wireshark",
-            "metal split": "metasploit",
-            "nick to": "nikto"
-        }
-
-    def correct_terms(self, text):
-        # Fix common voice recognition errors
-        # "map scan example.com" -> "nmap scan example.com"
-
-    def extract_parameters(self, text):
-        # Extract IPs, domains, ports from voice command
-        # "scan 192.168.1.1 port 80" -> {"ips": ["192.168.1.1"], "ports": [80]}
-```
-
-### Phase 5: Wake Word Detection (1 hour)
-```python
-# src/voice/recognition/wake_word_detector.py
+# src/voice/recognition/audio_processor.py
+# (This is a more detailed implementation plan)
+import os
+import struct
+import sounddevice as sd
+from scipy.io.wavfile import write
+import google.generativeai as genai
+import pyttsx3
 import pvporcupine
+import pyaudio
+from dotenv import load_dotenv
 
-class WakeWordDetector:
-    def __init__(self, wake_words=["hey kali", "kali ai"]):
-        # Initialize Picovoice Porcupine for wake word detection
-        self.wake_words = wake_words
-
-    def detect_wake_word(self, audio_chunk):
-        # Return True if wake word detected
-        # Enable continuous listening mode
-
-    def continuous_listen(self):
-        # Background thread listening for wake words
-        # Activate voice recognition when detected
-```
-
-### Phase 6: Noise Filtering (45 minutes)
-```python
-# src/voice/recognition/noise_filter.py
-import noisereduce as nr
-import librosa
-
-class NoiseFilter:
-    def reduce_noise(self, audio_data):
-        # Apply noise reduction algorithms
-        # Improve speech clarity for better recognition
-
-    def enhance_speech(self, audio_data):
-        # Enhance speech frequencies
-        # Suppress background noise
-```
-
-### Phase 7: Integration & Testing (1 hour)
-```python
-# src/voice/recognition/audio_processor.py - Main integration class
 class AudioProcessor:
     def __init__(self):
-        self.stt_engine = VoskSTTEngine("models/vosk-model-en-us")
-        self.wake_detector = WakeWordDetector()
-        self.vocab = CybersecurityVocabulary()
-        self.noise_filter = NoiseFilter()
+        load_dotenv()
+        self.api_key = os.getenv("GOOGLE_AI_API_KEY")
+        self.picovoice_key = os.getenv("PICOVOICE_ACCESS_KEY")
 
-    async def process_voice_command(self, audio_input):
-        # Complete pipeline:
-        # 1. Noise filtering
-        # 2. Speech recognition
-        # 3. Vocabulary correction
-        # 4. Parameter extraction
-        # Return processed command ready for AI layer
+        if not self.api_key:
+            raise ValueError("GOOGLE_AI_API_KEY not found. Please set it in your .env file.")
+        genai.configure(api_key=self.api_key)
+
+        self.stt_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+        self.tts_engine = pyttsx3.init()
+
+    def listen_for_wake_word(self):
+        # ... implementation ...
+
+    def record_audio(self, filename="command.wav", duration=5, sr=44100):
+        # ... implementation ...
+
+    def transcribe_audio(self, audio_file_path: str) -> str:
+        # ... implementation ...
+
+    def speak_text(self, text: str):
+        # ... implementation ...
+
+    def process_voice_command(self, duration=5):
+        # ... implementation ...
 ```
 
-### Phase 8: Performance Optimization (30 minutes)
-```bash
-# Test recognition speed and accuracy
-python -c "
+### Phase 4: Integration & Testing (1 hour)
+```python
+# main.py - Example usage
 from src.voice.recognition.audio_processor import AudioProcessor
-import time
 
-processor = AudioProcessor()
-start = time.time()
-result = processor.process_voice_command('test_audio.wav')
-print(f'Processing time: {time.time() - start:.2f}s')
-print(f'Recognition result: {result}')
-"
+def main():
+    processor = AudioProcessor()
 
-# Optimize for:
-# - <300ms processing latency
-# - >90% accuracy on security terms
-# - >95% wake word detection accuracy
+    # Listen for wake word, then get a voice command
+    processor.speak_text("I am ready. Say the wake word to begin.")
+    command = processor.process_voice_command(duration=5)
+
+    # The 'command' text can now be sent to the AI processing layer (Task 4)
+    processor.speak_text(f"Executing command: {command}")
+
+if __name__ == "__main__":
+    main()
 ```
 
 ## Overview
-Build a sophisticated voice recognition system with cybersecurity-specific vocabulary, wake word detection, and noise filtering. This system runs in the Kali AI-OS VM and processes voice commands for security operations.
+Build a voice recognition system using `pvporcupine` for wake word detection, `google-generativeai` for online speech-to-text, and `pyttsx3` for local text-to-speech. This system runs in the Kali AI-OS VM and processes voice commands for security operations.
 
 ## Directory Structure
 ```
@@ -196,285 +144,128 @@ Samsung-AI-os/
 │   │   │   ├── __init__.py
 │   │   │   ├── recognition/
 │   │   │   │   ├── __init__.py
-│   │   │   │   ├── vosk_engine.py
-│   │   │   │   ├── wake_word_detector.py
-│   │   │   │   ├── noise_filter.py
 │   │   │   │   └── audio_processor.py
-│   │   │   ├── vocabulary/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── cybersec_terms.py
-│   │   │   │   ├── tool_names.py
-│   │   │   │   ├── parameter_parser.py
-│   │   │   │   └── command_corrector.py
-│   │   │   ├── synthesis/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── tts_engine.py
-│   │   │   │   ├── response_formatter.py
-│   │   │   │   └── audio_output.py
-│   │   │   ├── models/
-│   │   │   │   ├── vosk-model-en-us/     # Downloaded model
-│   │   │   │   ├── cybersec-vocab.json
-│   │   │   │   └── wake-words.json
 │   │   │   └── config/
 │   │   │       ├── __init__.py
-│   │   │       ├── audio_config.py
-│   │   │       └── voice_settings.py
+│   │   │       └── audio_config.py
 │   │   └── tests/
 │   │       ├── voice/
 │   │       │   ├── __init__.py
 │   │       │   ├── test_recognition.py
-│   │       │   ├── test_wake_word.py
-│   │       │   ├── test_vocabulary.py
-│   │       │   ├── test_noise_filter.py
 │   │       │   └── test_audio_samples/
-│   │       │       ├── clean_command.wav
-│   │       │       ├── noisy_command.wav
-│   │       │       ├── wake_word_test.wav
-│   │       │       └── cybersec_terms.wav
+│   │       │       └── test_command.wav
 │   └── requirements/
-│       ├── voice_requirements.txt
-│       └── system_requirements.txt
+│       └── voice_requirements.txt
 ```
 
 ## Technology Stack
-- **STT Engine**: Vosk 0.3.45 (offline recognition)
-- **Audio Processing**: SpeechRecognition 3.10.0, pyaudio 0.2.11
-- **Noise Filtering**: noisereduce 3.0.0, librosa 0.10.1
-- **Text-to-Speech**: pyttsx3 2.90, espeak
-- **Wake Word Detection**: pvporcupine 3.0.0 (Picovoice)
-- **Audio Utils**: sounddevice 0.4.6, wave, numpy
-
-### 2. Audio Quality Tests
-```python
-# tests/voice/test_audio_quality.py
-def test_microphone_calibration():
-    """Test microphone input levels and quality"""
-    from src.voice.config.audio_config import AudioConfig
-
-    config = AudioConfig()
-
-    # Test microphone detection
-    mics = config.detect_microphones()
-    assert len(mics) > 0
-
-    # Test audio quality
-    sample = config.record_test_sample(duration=2.0)
-    quality_score = config.analyze_audio_quality(sample)
-
-    assert quality_score['snr'] > 10  # Signal-to-noise ratio
-    assert quality_score['volume'] > 0.1  # Adequate volume
-    assert quality_score['clipping'] < 0.05  # Minimal clipping
-
-def test_latency_requirements():
-    """Test voice processing latency meets requirements"""
-    import time
-
-    start_time = time.time()
-
-    # Simulate full voice processing pipeline
-    result = stt_engine.transcribe_real_time("test command")
-
-    end_time = time.time()
-    latency = end_time - start_time
-
-    # Should process voice in under 500ms
-    assert latency < 0.5
-```
+- **Wake Word Detection**: `pvporcupine`
+- **STT Engine**: `google-generativeai` (online recognition)
+- **Audio Recording**: `sounddevice`, `scipy`, `numpy`, `pyaudio`
+- **Text-to-Speech**: `pyttsx3`, `espeak`
+- **Development**: `uv`, `pytest`, `pytest-mock`
 
 ## Implementation Requirements
 
 ### Core Components
 
-#### 1. Vosk STT Engine
+#### 1. Wake Word Detection
 ```python
-# src/voice/recognition/vosk_engine.py
-import json
-import vosk
-import pyaudio
-import numpy as np
-from typing import Optional, Dict, Any
+# src/voice/recognition/audio_processor.py (listen_for_wake_word method)
+def listen_for_wake_word(self):
+    """Listens for a wake word and returns when one is detected."""
+    if not self.picovoice_key:
+        print("PICOVOICE_ACCESS_KEY not set. Manual start required.")
+        input("Press Enter to start recording...")
+        return
 
-class VoskSTTEngine:
-    def __init__(self, model_path: str, sample_rate: int = 16000):
-        self.model_path = model_path
-        self.sample_rate = sample_rate
-        self.model = vosk.Model(model_path)
-        self.rec = vosk.KaldiRecognizer(self.model, sample_rate)
-
-    def transcribe_file(self, audio_file: str) -> Dict[str, Any]:
-        """Transcribe audio file to text"""
-        # Implementation here
-        pass
-
-    def transcribe_real_time(self, audio_stream) -> Dict[str, Any]:
-        """Real-time transcription from audio stream"""
-        # Implementation here
-        pass
-```
-
-#### 2. Cybersecurity Vocabulary
-```python
-# src/voice/vocabulary/cybersec_terms.py
-class CybersecurityVocabulary:
-    def __init__(self):
-        self.security_tools = {
-            # Common misheard -> correct
-            "map": "nmap",
-            "burp sweet": "burpsuite",
-            "burp suit": "burpsuite",
-            "wire shark": "wireshark",
-            "metal split": "metasploit",
-            "nick to": "nikto"
-        }
-
-        self.security_terms = {
-            "recon": "reconnaissance",
-            "vuln": "vulnerability",
-            "pen test": "penetration test",
-            "priv esc": "privilege escalation"
-        }
-
-    def correct_terms(self, text: str) -> str:
-        """Auto-correct common voice recognition errors"""
-        # Implementation here
-        pass
-
-    def extract_parameters(self, text: str) -> Dict[str, list]:
-        """Extract IPs, URLs, ports, etc. from voice command"""
-        # Implementation here
-        pass
-```
-
-#### 3. Wake Word Detection
-```python
-# src/voice/recognition/wake_word_detector.py
-import pvporcupine
-from typing import List
-
-class WakeWordDetector:
-    def __init__(self, wake_words: List[str]):
-        self.wake_words = wake_words
-        self.porcupine = pvporcupine.create(
-            keywords=wake_words,
-            access_key="YOUR_PICOVOICE_ACCESS_KEY"
+    porcupine = None
+    audio_stream = None
+    pa = None
+    try:
+        porcupine = pvporcupine.create(access_key=self.picovoice_key, keywords=['computer'])
+        pa = pyaudio.PyAudio()
+        audio_stream = pa.open(
+            rate=porcupine.sample_rate, channels=1, format=pyaudio.paInt16,
+            input=True, frames_per_buffer=porcupine.frame_length
         )
-
-    def detect_wake_word(self, audio_chunk: bytes) -> bool:
-        """Detect wake word in audio chunk"""
-        # Implementation here
-        pass
+        print("--- Listening for wake word ('computer') ---")
+        while True:
+            pcm = audio_stream.read(porcupine.frame_length)
+            pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
+            if porcupine.process(pcm) >= 0:
+                print("Wake word detected!")
+                break
+    finally:
+        if porcupine: porcupine.delete()
+        if audio_stream: audio_stream.close()
+        if pa: pa.terminate()
 ```
 
-#### 4. Noise Filter
+#### 2. Speech-to-Text (STT)
 ```python
-# src/voice/recognition/noise_filter.py
-import noisereduce as nr
-import librosa
-
-class NoiseFilter:
-    def __init__(self):
-        self.filter_settings = {
-            'stationary': True,
-            'prop_decrease': 0.8
-        }
-
-    def reduce_noise(self, audio_data: np.ndarray) -> np.ndarray:
-        """Apply noise reduction to audio"""
-        # Implementation here
-        pass
-
-    def enhance_speech(self, audio_data: np.ndarray) -> np.ndarray:
-        """Enhance speech clarity"""
-        # Implementation here
-        pass
+# src/voice/recognition/audio_processor.py (transcribe_audio method)
+def transcribe_audio(self, audio_file_path: str) -> str:
+    """Transcribes audio file to text using Google GenAI."""
+    try:
+        print("Uploading and transcribing audio...")
+        audio_file = genai.upload_file(path=audio_file_path)
+        response = self.stt_model.generate_content(
+            ["Transcribe the following audio:", audio_file]
+        )
+        return response.text
+    except Exception as e:
+        print(f"Error during transcription: {e}")
+        return "Error: Could not transcribe audio."
 ```
-
-### Voice Command Processing Pipeline
-
-#### 1. Audio Capture
-- Continuous microphone monitoring
-- Wake word detection
-- Automatic gain control
-- Background noise suppression
-
-#### 2. Speech Recognition
-- Vosk offline STT processing
-- Cybersecurity vocabulary correction
-- Confidence scoring
-- Real-time streaming
-
-#### 3. Command Parsing
-- Intent classification
-- Parameter extraction (IPs, URLs, ports)
-- Tool name recognition
-- Context awareness
-
-#### 4. Response Generation
-- Text-to-speech feedback
-- Progress announcements
-- Error notifications
-- Success confirmations
 
 ## Testing Strategy
 
 ### Unit Tests (80% coverage minimum)
 ```bash
-# Install test dependencies
-pip install pytest pytest-cov pytest-asyncio
-
-# Run voice recognition tests
-cd kali-ai-os
-python -m pytest tests/voice/ -v --cov=src.voice --cov-report=html
+# Run voice recognition tests using uv
+uv run pytest tests/voice/ -v --cov=src.voice --cov-report=html
 
 # Expected test categories:
-# - STT accuracy tests
-# - Wake word detection
-# - Noise filtering
-# - Vocabulary correction
-# - Parameter extraction
-# - Real-time processing
+# - Wake word detection initialization and processing (mocked)
+# - Audio recording parameters and file output
+# - STT transcription accuracy with sample files
+# - TTS speech generation
+# - Graceful error handling for API failures
+```
+```python
+# tests/voice/test_recognition.py
+import pytest
+from unittest.mock import patch, MagicMock
+from src.voice.recognition.audio_processor import AudioProcessor
+
+@patch('pvporcupine.create')
+def test_wake_word_initialization(mock_pv_create):
+    """Test that pvporcupine is initialized with the correct access key and keywords."""
+    processor = AudioProcessor()
+    processor.listen_for_wake_word()
+    mock_pv_create.assert_called_with(access_key=processor.picovoice_key, keywords=['computer'])
+
+@patch('google.generativeai.GenerativeModel.generate_content')
+def test_transcription_api_call(mock_generate_content):
+    """Test that the Google GenAI API is called correctly."""
+    # Mock the response from the API
+    mock_response = MagicMock()
+    mock_response.text = "scan example.com"
+    mock_generate_content.return_value = mock_response
+
+    processor = AudioProcessor()
+    # Assume 'test.wav' is a valid dummy file
+    result = processor.transcribe_audio('test.wav')
+
+    assert result == "scan example.com"
+    mock_generate_content.assert_called_once()
 ```
 
 ### Integration Tests
-```bash
-# Test with real microphone
-python -m pytest tests/voice/test_microphone_integration.py -v
-
-# Test voice command pipeline
-python -m pytest tests/voice/test_voice_pipeline.py -v
-
-# Test audio quality
-python -m pytest tests/voice/test_audio_quality.py -v
-```
-
-### Performance Tests
-```python
-def test_recognition_speed():
-    """Test voice recognition speed meets requirements"""
-    import time
-
-    start_time = time.time()
-    result = voice_engine.process_command("scan example.com")
-    end_time = time.time()
-
-    # Should process in under 300ms
-    assert (end_time - start_time) < 0.3
-
-def test_accuracy_with_noise():
-    """Test recognition accuracy in noisy environments"""
-    # Test with different noise levels
-    noise_levels = [0.1, 0.3, 0.5]  # SNR ratios
-
-    for noise_level in noise_levels:
-        accuracy = test_recognition_with_noise(noise_level)
-
-        if noise_level <= 0.1:
-            assert accuracy > 0.95  # 95% accuracy in quiet
-        elif noise_level <= 0.3:
-            assert accuracy > 0.85  # 85% accuracy with moderate noise
-        else:
-            assert accuracy > 0.70  # 70% accuracy with high noise
-```
+- Test the full pipeline: wake word -> record -> transcribe -> speak.
+- Test with a real microphone in the VM to ensure audio hardware is correctly configured.
+- Test failure modes, such as an invalid Google API key or no internet connection.
 
 ## VM Integration
 
@@ -493,135 +284,88 @@ echo "load-module module-native-protocol-unix" >> ~/.config/pulse/default.pa
 # Test audio setup
 arecord -l  # List recording devices
 aplay -l   # List playback devices
-
-# Test microphone
 arecord -f cd -t wav -d 5 test.wav && aplay test.wav
-```
-
-### Shared Folder Configuration
-```bash
-# Mount shared folder for voice models
-sudo mkdir -p /mnt/shared
-sudo mount -t 9p -o trans=virtio,version=9p2000.L shared /mnt/shared
-
-# Create symlink to voice models
-ln -s /mnt/shared/voice-models ~/kali-ai-os/src/voice/models/
 ```
 
 ## Deployment & Testing
 
-### Setup Commands
+### Setup Commands with uv
 ```bash
-# 1. Download Vosk model
-cd kali-ai-os/src/voice/models/
-wget https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip
-unzip vosk-model-en-us-0.22.zip
-mv vosk-model-en-us-0.22 vosk-model-en-us
+# 1. Install all dependencies
+uv sync --all-extras
 
-# 2. Install Python dependencies
-pip install -r requirements/voice_requirements.txt
+# 2. Configure API keys in .env file
+# (As described in Phase 1)
 
-# 3. Configure audio system
-python src/voice/config/setup_audio.py
-
-# 4. Test voice recognition
-python -c "
-from src.voice.recognition.vosk_engine import VoskSTTEngine
-engine = VoskSTTEngine('src/voice/models/vosk-model-en-us')
-print('Voice engine ready!')
-"
-
-# 5. Run comprehensive tests
-python -m pytest tests/voice/ -v
+# 3. Run comprehensive tests
+uv run pytest tests/voice/ -v
 ```
 
 ### Validation Criteria
 ✅ **Must pass before considering task complete:**
 
-1. **Functionality Tests**
-   - Wake word detection works (>95% accuracy)
-   - STT recognizes cybersecurity terms (>90% accuracy)
-   - Noise filtering improves recognition
-   - Real-time processing under 300ms latency
+1.  **Functionality Tests**
+    -   Wake word detection works reliably.
+    -   STT recognizes cybersecurity terms accurately (>95%).
+    -   Audio is recorded clearly.
+    -   TTS output is clear and understandable.
+    -   Full listen -> record -> transcribe -> speak loop works.
 
-2. **Audio Quality Tests**
-   - Microphone input properly configured
-   - Audio quality meets minimum thresholds
-   - Background noise properly filtered
-   - TTS output clear and understandable
+2.  **Integration Tests**
+    -   Correctly uses API keys from the environment.
+    -   Handles potential network errors gracefully when calling the Google API.
+    -   Handles missing PicoVoice key by falling back to manual start.
 
-3. **Integration Tests**
-   - Voice commands properly parsed
-   - Parameters extracted correctly
-   - Error handling for audio issues
-   - Graceful degradation with poor audio
-
-4. **Performance Tests**
-   - Recognition speed < 300ms
-   - Memory usage < 256MB
-   - CPU usage < 25% during recognition
-   - Works with various microphone types
+3.  **Performance Tests**
+    -   Recognition latency (including network) is under 3 seconds for a 5-second clip.
+    -   Wake word listener has low, constant CPU overhead.
 
 ### Success Metrics
-- ✅ 95%+ wake word detection accuracy
-- ✅ 90%+ cybersecurity term recognition
-- ✅ <300ms voice processing latency
-- ✅ All integration tests pass
-- ✅ Audio system configured in VM
+- ✅ 95%+ wake word detection accuracy.
+- ✅ 95%+ cybersecurity term recognition accuracy.
+- ✅ <3s voice processing latency (post-recording).
+- ✅ All integration tests pass.
+- ✅ Audio system configured and working in the VM.
 
 ## Configuration Files
 
 ### voice_requirements.txt
 ```txt
-# Voice Recognition
-vosk==0.3.45
-SpeechRecognition==3.10.0
-pyaudio==0.2.11
+# Voice Recognition & AI
+google-generativeai
+python-dotenv
 
-# Audio Processing
-librosa==0.10.1
-noisereduce==3.0.0
-sounddevice==0.4.6
-numpy==1.24.3
+# Wake Word
+pvporcupine
+pyaudio
 
-# Wake Word Detection
-pvporcupine==3.0.0
+# Audio Recording
+sounddevice
+scipy
+numpy
 
 # Text-to-Speech
-pyttsx3==2.90
+pyttsx3
 
 # Testing
-pytest==7.4.0
-pytest-cov==4.1.0
-pytest-asyncio==0.21.1
+pytest
+pytest-asyncio
+pytest-mock
 ```
 
 ### Audio Configuration
 ```python
 # src/voice/config/audio_config.py
 AUDIO_CONFIG = {
-    'sample_rate': 16000,
-    'chunk_size': 1024,
+    'sample_rate': 44100,
+    'record_duration_seconds': 5,
     'channels': 1,
-    'format': 'int16',
-    'wake_words': ['hey kali', 'kali ai', 'security ai'],
-    'noise_threshold': 0.01,
-    'min_speech_duration': 0.5,
-    'max_speech_duration': 10.0,
-    'silence_timeout': 2.0
+    'wake_words': ['computer'],
+    'wake_word_sensitivity': 0.5
 }
 ```
 
 ## Next Steps
 After completing this task:
-1. Document voice command syntax for users
-2. Create voice command reference guide
-3. Optimize for different accents and speech patterns
-4. Proceed to Task 3: Desktop Automation Core
-
-## Troubleshooting
-Common issues and solutions:
-- **No microphone detected**: Check audio drivers and permissions
-- **Poor recognition accuracy**: Calibrate microphone levels and noise filtering
-- **High latency**: Optimize Vosk model size and processing pipeline
-- **Wake word false positives**: Adjust sensitivity settings
+1.  Integrate the transcribed text output with the AI Processing Layer (Task 4).
+2.  Proceed to Task 3: Desktop Automation Core.
