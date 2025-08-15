@@ -21,6 +21,10 @@ dev = [
     "pytest-asyncio",
     "pytest-mock",
     "pre-commit",
+    "ruff",
+    "black",
+    "isort",
+    "mypy",
 ]
 
 [tool.pytest.ini_options]
