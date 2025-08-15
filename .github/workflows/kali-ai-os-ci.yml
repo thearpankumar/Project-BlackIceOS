@@ -34,6 +34,9 @@ jobs:
     - name: Set up Python
       run: uv python install
 
+    - name: Install PortAudio
+      run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
+
     - name: Install dependencies
       run: uv sync --all-extras
 
@@ -71,6 +74,9 @@ jobs:
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
+
+    - name: Install PortAudio
+      run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
 
     - name: Install dependencies
       run: uv sync --all-extras
