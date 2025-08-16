@@ -1,5 +1,6 @@
 import os
 import time
+from typing import cast
 
 import requests
 from cryptography.fernet import Fernet
@@ -127,16 +128,17 @@ class AuthClient:
         try:
             fernet = Fernet(self.encryption_key)
             encrypted_data = self.encrypted_keys[key_name].encode()
-            decrypted_bytes = fernet.decrypt(encrypted_data)
-            return decrypted_bytes.decode('utf-8')
+            decrypted_bytes = cast(bytes, fernet.decrypt(encrypted_data))
+            return decrypted_bytes.decode("utf-8")
         except Exception as e:
             # Return mock decrypted key for testing
             print(f"Error decrypting key: {e}")  # Log the exception
-            return (
+            fallback_key: str = (
                 "actual_google_api_key"
                 if key_name == "google_genai"
                 else f"decrypted_{key_name}_key"
             )
+            return fallback_key
 
     def cleanup(self: "AuthClient") -> None:
         """Wipe all sensitive data from memory"""
