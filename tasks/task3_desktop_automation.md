@@ -124,7 +124,7 @@ class DesktopController:
             return self._find_with_hybrid(target, confidence)
         elif self.mode == "ai_vision":
             return self._find_with_ai_vision(target)
-    
+
     def _find_with_ai_vision(self, description):
         """FUTURE: Find element using pure AI vision"""
         # 1. Capture current screenshot
@@ -144,7 +144,7 @@ class HybridRecognition:
     def __init__(self, ai_model):
         self.ai_model = ai_model
         self.template_matcher = OpenCVMatcher()
-        
+
     def find_element(self, screenshot, target, method="hybrid"):
         """Find element using best available method"""
         if method == "template" and self._has_template(target):
@@ -157,7 +157,7 @@ class HybridRecognition:
             return self._find_with_ai_vision(screenshot, target)
         else:
             return self._find_with_ai_vision(screenshot, target)
-    
+
     def _find_with_ai_vision(self, screenshot, description):
         """Find element using AI vision - future primary method"""
         # Send screenshot + description to AI
@@ -165,16 +165,16 @@ class HybridRecognition:
         Return the exact pixel coordinates where I should click.
         Respond with just: x,y,confidence
         """
-        
+
         response = self.ai_model.generate_content([
             prompt,
             {'mime_type': 'image/png', 'data': screenshot}
         ])
-        
+
         # Parse AI response: "450,320,0.95"
         # AI directly tells us where to click
         return self._parse_ai_coordinates(response.text)
-        
+
     def evolve_to_pure_ai(self):
         """FUTURE: Switch to pure AI vision mode"""
         # Phase out templates entirely
@@ -455,7 +455,7 @@ def test_ai_decision_making():
             'expected_actions': ['click_proxy_tab', 'set_target_scope']
         },
         {
-            'screenshot': 'tests/fixtures/test_screenshots/terminal_ready.png', 
+            'screenshot': 'tests/fixtures/test_screenshots/terminal_ready.png',
             'task': 'run nmap scan on 192.168.1.1',
             'expected_actions': ['click_terminal', 'type_command']
         }
@@ -467,10 +467,10 @@ def test_ai_decision_making():
             screenshot=scenario['screenshot'],
             task=scenario['task']
         )
-        
+
         # AI should identify correct sequence of actions
         assert len(action_plan['actions']) > 0
-        
+
         # AI provides specific coordinates and actions
         for action in action_plan['actions']:
             assert 'type' in action  # click, type, etc.

@@ -44,7 +44,7 @@ def toggle_voice_recording(self):
             text="🛑 Stop Recording",
             bg='#dc3545'
         )
-        
+
         # Start recording in background thread
         def record_audio():
             try:
@@ -52,22 +52,22 @@ def toggle_voice_recording(self):
                 def audio_callback(indata, frames, time, status):
                     if self.is_recording:
                         self.recording_data.append(indata.copy())
-                        
+
                 # Start audio stream
                 stream = sd.InputStream(callback=audio_callback)
                 stream.start()
-                
+
                 # Wait for recording to stop
                 while self.is_recording:
                     time.sleep(0.1)
-                    
+
                 stream.stop()
-                
+
             except Exception as e:
                 self.log_message(f"Recording error: {e}", 'ERROR')
-        
+
         threading.Thread(target=record_audio, daemon=True).start()
-    
+
     else:
         # Stop recording and process with Gemini
         self.is_recording = False
@@ -78,26 +78,26 @@ def process_voice_with_gemini(self):
     try:
         # Convert recording data to audio file
         audio_data = np.concatenate(self.recording_data)
-        
+
         # Save as temporary WAV file
         temp_file = "/tmp/voice_command.wav"
         sf.write(temp_file, audio_data, 44100)
-        
+
         # Upload to Gemini for transcription
         audio_file = genai.upload_file(path=temp_file)
         response = self.ai_model.generate_content([
-            "Transcribe this audio clearly:", 
+            "Transcribe this audio clearly:",
             audio_file
         ])
-        
+
         # Process transcribed text as command
         transcribed_text = response.text.strip()
         self.command_entry.delete(0, tk.END)
         self.command_entry.insert(0, transcribed_text)
-        
+
         # Execute the command automatically
         self.process_command()
-        
+
     except Exception as e:
         self.log_message(f"Voice processing error: {e}", 'ERROR')
     finally:
@@ -118,13 +118,13 @@ def test_voice_button_functionality():
     """Test voice button toggles recording state"""
     # Test button text changes when recording starts/stops
     # Test recording state management
-    
+
 @patch('sounddevice.InputStream')
 def test_audio_recording_integration(mock_stream):
     """Test audio recording through sounddevice"""
     # Test recording starts and captures audio data
     # Test recording stops cleanly
-    
+
 @patch('google.generativeai.upload_file')
 @patch('google.generativeai.GenerativeModel.generate_content')
 def test_gemini_transcription(mock_generate, mock_upload):
@@ -132,7 +132,7 @@ def test_gemini_transcription(mock_generate, mock_upload):
     mock_response = MagicMock()
     mock_response.text = "open terminal and scan 192.168.1.1"
     mock_generate.return_value = mock_response
-    
+
     # Test voice file upload and transcription
     # Test transcribed text integration with command system
 
@@ -150,7 +150,7 @@ def test_voice_command_execution():
 # Records: "open terminal and run nmap scan on 192.168.1.1"
 # System transcribes and executes automatically
 
-# User clicks 🎤 Voice Command button  
+# User clicks 🎤 Voice Command button
 # Records: "launch burp suite and configure proxy"
 # System processes as text command
 
@@ -219,7 +219,7 @@ def setup_voice_interface(self):
         borderwidth=2
     )
     self.voice_button.grid(row=0, column=4, padx=5, pady=5)
-    
+
     # Initialize voice recording state
     self.is_recording = False
     self.recording_data = []
@@ -233,23 +233,23 @@ def start_voice_recording(self):
     try:
         import sounddevice as sd
         import soundfile as sf
-        
+
         # Configure recording parameters
         duration = 10  # Maximum 10 seconds
         sample_rate = 44100
-        
+
         # Record audio
-        audio_data = sd.rec(int(duration * sample_rate), 
-                           samplerate=sample_rate, 
-                           channels=1, 
+        audio_data = sd.rec(int(duration * sample_rate),
+                           samplerate=sample_rate,
+                           channels=1,
                            dtype='float64')
-        
+
         # Save as temporary file
         temp_file = "/tmp/voice_command.wav"
         sf.write(temp_file, audio_data, sample_rate)
-        
+
         return temp_file
-        
+
     except Exception as e:
         self.log_message(f"Recording error: {e}", 'ERROR')
         return None
@@ -280,12 +280,12 @@ def test_audio_recording(mock_sf_write, mock_sd_rec):
     # Mock audio data
     mock_audio_data = [[0.1], [0.2], [0.3]]
     mock_sd_rec.return_value = mock_audio_data
-    
+
     # Test recording process
     from main import VoiceInterface  # Assuming integration in main.py
     voice = VoiceInterface()
     temp_file = voice.start_voice_recording()
-    
+
     assert temp_file == "/tmp/voice_command.wav"
     mock_sd_rec.assert_called_once()
     mock_sf_write.assert_called_once_with("/tmp/voice_command.wav", mock_audio_data, 44100)
@@ -298,11 +298,11 @@ def test_gemini_transcription(mock_generate, mock_upload):
     mock_response = MagicMock()
     mock_response.text = "open terminal and run nmap scan"
     mock_generate.return_value = mock_response
-    
+
     from main import VoiceInterface
     voice = VoiceInterface()
     result = voice.process_voice_with_gemini("/tmp/test.wav")
-    
+
     assert result == "open terminal and run nmap scan"
     mock_upload.assert_called_once_with(path="/tmp/test.wav")
     mock_generate.assert_called_once()

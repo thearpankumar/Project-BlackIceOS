@@ -23,7 +23,7 @@ kali-ai-desktop test
 
 ### Option 2: Development Setup
 ```bash
-# Clone repository  
+# Clone repository
 git clone <repository-url>
 cd kali-ai-os
 
@@ -183,12 +183,12 @@ curl -X GET http://192.168.1.100:8000/health
 ```
 
 #### API Key Configuration
-1. **Google AI (Gemini)**: 
+1. **Google AI (Gemini)**:
    - Visit [Google AI Studio](https://aistudio.google.com/)
    - Create API key
    - Add to `GOOGLE_AI_API_KEY` in `.env`
 
-2. **Picovoice**: 
+2. **Picovoice**:
    - Visit [Picovoice Console](https://console.picovoice.ai/)
    - Create access key
    - Add to `PICOVOICE_ACCESS_KEY` in `.env`
@@ -261,7 +261,7 @@ print('Screenshot test:', 'PASSED' if result else 'FAILED')
 # Expected output:
 # ✓ DesktopController Init: XX.Xms, XX.XMB
 # ✓ Screenshot Capture: XX.Xms, XX.XMB
-# ... 
+# ...
 # Task 3 Requirements: ✓ PASSED
 ```
 
@@ -385,7 +385,7 @@ uv sync --all-extras
 
 #### 3. LLM Vision Integration
 ```bash
-# Test LLM vision functionality 
+# Test LLM vision functionality
 # Ensure API keys are configured in .env:
 # GOOGLE_AI_API_KEY=your_key_here
 

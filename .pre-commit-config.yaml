@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -14,31 +14,31 @@ repos:
       - id: check-case-conflict
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.5
+    rev: v0.12.9
     hooks:
       - id: ruff
         name: ruff lint auth-server
-        args: [--fix, --exit-non-zero-on-fix]
+        language: python
+        entry: bash -c 'cd auth-server && ruff check --fix --exit-non-zero-on-fix .'
         files: ^auth-server/.*\.py$
       - id: ruff
         name: ruff lint kali-ai-os
-        args: [--fix, --exit-non-zero-on-fix]
+        language: python
+        entry: bash -c 'cd kali-ai-os && ruff check --fix --exit-non-zero-on-fix .'
         files: ^kali-ai-os/.*\.py$
 
   - repo: https://github.com/psf/black
-    rev: 24.8.0
+    rev: 25.1.0
     hooks:
       - id: black
         name: black formatter auth-server
         files: ^auth-server/.*\.py$
-        args: [--line-length=88, --target-version=py311]
       - id: black
         name: black formatter kali-ai-os
         files: ^kali-ai-os/.*\.py$
-        args: [--line-length=88, --target-version=py311]
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
       - id: isort
         name: isort import sorting auth-server
@@ -50,7 +50,7 @@ repos:
         args: [--profile=black]
 
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.9
+    rev: 1.8.6
     hooks:
       - id: bandit
         name: bandit security check auth-server
@@ -64,12 +64,12 @@ repos:
         exclude: ^kali-ai-os/tests/.*
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.0
+    rev: v1.17.1
     hooks:
       - id: mypy
         name: mypy type checking auth-server
         files: ^auth-server/app/.*\.py$
-        args: [--config-file=auth-server/pyproject.toml, --ignore-missing-imports]
+        args: [--config-file=auth-server/pyproject.toml]
         additional_dependencies:
           - fastapi
           - sqlalchemy
@@ -79,7 +79,7 @@ repos:
       - id: mypy
         name: mypy type checking kali-ai-os
         files: ^kali-ai-os/src/.*\.py$
-        args: [--config-file=kali-ai-os/pyproject.toml, --ignore-missing-imports]
+        args: [--config-file=kali-ai-os/pyproject.toml]
         additional_dependencies:
           - numpy
           - scipy
@@ -88,6 +88,8 @@ repos:
           - webrtcvad
           - pyttsx3
           - google-generativeai
+          - types-requests
+          - types-psutil
 
   - repo: local
     hooks:
@@ -113,7 +115,7 @@ repos:
           - -c
           - |
             if [[ $(git diff --cached --name-only | grep -E '^kali-ai-os/.*\.py$') ]]; then
-              cd kali-ai-os && uv run pytest tests/ --tb=short -q || exit 1
+              cd kali-ai-os && xvfb-run -a uv run pytest tests/ --tb=short -q || exit 1
             fi
         pass_filenames: false
         always_run: false
@@ -127,7 +129,7 @@ repos:
           - -c
           - |
             # Check for common secret patterns (simplified for shell safety)
-            if git diff --cached --name-only | xargs grep -l -E "(api_key|secret_key|password|token) *= *[\'\"][^\'\"]+[\'\"]" 2>/dev/null; then
+            if git diff --cached --name-only | xargs grep -l -E "(api_key|secret_key|password|token) *= *['"'"'"][^'"'"'"]+['"'"'"]" 2>/dev/null; then
               echo "❌ Potential secrets detected in staged files"
               exit 1
             fi

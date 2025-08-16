@@ -1,196 +1,165 @@
 import os
-import queue
-import struct
+import tempfile
+from typing import Any
 
 import google.generativeai as genai
-import noisereduce as nr
 import numpy as np
-import pvporcupine
-import pyaudio
 import pyttsx3
 import sounddevice as sd
-import webrtcvad
 from dotenv import load_dotenv
-from scipy.io.wavfile import write
+from scipy.io.wavfile import write  # type: ignore[import-untyped]
 
 
-class AudioProcessor:
-    def __init__(self, sr=16000, vad_aggressiveness=3, silence_duration=3.0):
+class SimpleAudioProcessor:
+    """Simplified audio processor without wake word detection - button-based recording only"""
+
+    def __init__(self, sample_rate: int = 16000) -> None:
         load_dotenv()
-        self.api_key = os.getenv("GOOGLE_AI_API_KEY")
-        self.picovoice_key = os.getenv("PICOVOICE_ACCESS_KEY")
+        # Try GOOGLE_AI_API_KEY first, then fallback to GEMINI_API_KEY for compatibility
+        self.api_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
         if not self.api_key:
             raise ValueError(
-                "GOOGLE_AI_API_KEY not found. Please set it in your .env file."
+                "API key not found. Please set either GOOGLE_AI_API_KEY or"
+                " GEMINI_API_KEY in your .env file."
             )
         genai.configure(api_key=self.api_key)
 
         self.stt_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         self.tts_engine = pyttsx3.init()
+        self.sample_rate = sample_rate
+        self.is_recording = False
+        self.recording_data: list[Any] = []
 
-        self.sr = sr
-        self.vad = webrtcvad.Vad(vad_aggressiveness)
-        self.silence_duration = silence_duration
-        self.frame_duration = 30  # VAD frame duration in ms
-        self.frame_size = int(self.sr * self.frame_duration / 1000)
-        self.audio_queue = queue.Queue()
-        self.noise_profile = None
+    def start_recording(self) -> None:
+        """Start recording audio data"""
+        self.is_recording = True
+        self.recording_data = []
+        print("Started recording audio...")
 
-    def _calibrate_noise(self):
-        """Listens for a short period to create a noise profile."""
-        print("Calibrating for ambient noise... Please be quiet for 2 seconds.")
-        noise_frames = []
-        with sd.InputStream(
-            samplerate=self.sr, channels=1, dtype="int16", blocksize=self.frame_size
-        ):
-            for _ in range(int(2000 / self.frame_duration)):  # 2 seconds of audio
-                noise_frames.append(
-                    sd.rec(
-                        self.frame_size, samplerate=self.sr, channels=1, dtype="int16"
-                    )
-                )
+    def stop_recording(self) -> None:
+        """Stop recording audio data"""
+        self.is_recording = False
+        print("Stopped recording audio...")
 
-        noise_sample = np.concatenate(noise_frames, axis=0).flatten()
-        self.noise_profile = nr.reduce_noise(
-            y=noise_sample, sr=self.sr, stationary=True
-        )
-        print("Calibration complete.")
+    def record_audio_data(
+        self, indata: np.ndarray, frames: int, time: object, status: sd.CallbackFlags
+    ) -> None:
+        """Callback function to collect audio data during recording"""
+        if self.is_recording:
+            self.recording_data.append(indata.copy())
 
-    def listen_for_wake_word(self):
-        """Listens for a wake word and returns when one is detected."""
-        if not self.picovoice_key:
-            print("PICOVOICE_ACCESS_KEY not set. Manual start required.")
-            input("Press Enter to start recording...")
-            return
+    def save_recording(self, filename: str | None = None) -> str | None:
+        """Save recorded audio to file"""
+        if not self.recording_data:
+            return None
 
-        porcupine = None
-        audio_stream = None
-        pa = None
+        if filename is None:
+            filename = os.path.join(tempfile.gettempdir(), "voice_recording.wav")
+
         try:
-            porcupine = pvporcupine.create(
-                access_key=self.picovoice_key, keywords=["computer"]
-            )
-            pa = pyaudio.PyAudio()
-            audio_stream = pa.open(
-                rate=porcupine.sample_rate,
-                channels=1,
-                format=pyaudio.paInt16,
-                input=True,
-                frames_per_buffer=porcupine.frame_length,
-            )
-            print("--- Listening for wake word ('computer') ---")
-            while True:
-                pcm = audio_stream.read(porcupine.frame_length)
-                pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
-                if porcupine.process(pcm) >= 0:
-                    print("Wake word detected!")
-                    break
-        finally:
-            if porcupine:
-                porcupine.delete()
-            if audio_stream:
-                audio_stream.close()
-            if pa:
-                pa.terminate()
+            # Convert to numpy array and save as wav
+            audio_data = np.concatenate(self.recording_data, axis=0)
 
-    def _audio_callback(self, indata, frames, time, status):
-        """This is called (from a separate thread) for each audio block."""
-        if status:
-            print(status, flush=True)
+            # Convert to int16 for wav file
+            audio_int16 = (audio_data * 32767).astype(np.int16)
+            write(filename, self.sample_rate, audio_int16)
 
-        # Perform noise reduction
-        reduced_noise_frame = nr.reduce_noise(
-            y=indata.flatten(), sr=self.sr, y_noise=self.noise_profile
-        )
-        self.audio_queue.put(reduced_noise_frame.astype(np.int16))
+            print(f"Recording saved to {filename}")
+            return filename
+        except Exception as e:
+            print(f"Error saving recording: {e}")
+            return None
 
-    def record_audio(self, filename="command.wav"):
-        """
-        Waits for speech to start, then records until a 3-second silence is detected using VAD.
-        """
-        self.audio_queue = queue.Queue()
-
-        with sd.InputStream(
-            samplerate=self.sr,
-            channels=1,
-            dtype="int16",
-            blocksize=self.frame_size,
-            callback=self._audio_callback,
-        ):
-            print("Listening for command... (you have 5s to start)")
-
-            # 1. Wait for speech to start
-            frames = []
-            try:
-                while True:
-                    frame = self.audio_queue.get(timeout=5)
-                    is_speech = self.vad.is_speech(frame.tobytes(), self.sr)
-                    if is_speech:
-                        print("Speech detected, starting recording.")
-                        frames.append(frame)
-                        break
-            except queue.Empty:
-                print("No speech detected within the timeout period.")
-                self.speak_text("I didn't hear anything. Please try again.")
-                return False
-
-            # 2. Record until silence is detected
-            silent_frames = 0
-            num_silent_frames_to_stop = int(
-                self.silence_duration * 1000 / self.frame_duration
-            )
-
-            while True:
-                try:
-                    frame = self.audio_queue.get(timeout=self.silence_duration + 0.5)
-                    frames.append(frame)
-                    is_speech = self.vad.is_speech(frame.tobytes(), self.sr)
-
-                    if not is_speech:
-                        silent_frames += 1
-                    else:
-                        silent_frames = 0
-
-                    if silent_frames >= num_silent_frames_to_stop:
-                        print(
-                            f"Silence of {self.silence_duration}s detected, stopping recording."
-                        )
-                        break
-                except queue.Empty:
-                    print("Recording finished due to timeout (silence).")
-                    break
-
-        recording = np.concatenate(frames, axis=0)
-        write(filename, self.sr, recording)
-        print(f"Recording saved to {filename}")
-        return True
-
-    def transcribe_audio(self, audio_file_path: str) -> str:
-        """Transcribes audio file to text using Google GenAI."""
+    def transcribe_audio_file(self, audio_file_path: str) -> str:
+        """Transcribes audio file to text using Google GenAI"""
         if not os.path.exists(audio_file_path):
-            return "Error: No audio was recorded."
+            return "Error: Audio file not found."
+
         try:
-            print("Uploading and transcribing audio...")
-            audio_file = genai.upload_file(path=audio_file_path)
-            response = self.stt_model.generate_content(
-                ["Transcribe the following audio:", audio_file]
+            print("Transcribing audio with LLM...")
+
+            # Read audio file as bytes
+            with open(audio_file_path, 'rb') as f:
+                audio_content = f.read()
+
+            # Send to LLM for transcription
+            prompt = (
+                "Please transcribe this audio to text. Only return the transcribed"
+                " text, nothing else."
             )
-            return response.text
+            response = self.stt_model.generate_content(
+                [prompt, {"mime_type": "audio/wav", "data": audio_content}]
+            )
+
+            transcribed_text = str(response.text).strip() if response.text else ""
+            print(f"Transcribed: '{transcribed_text}'")
+            return transcribed_text
+
         except Exception as e:
             print(f"Error during transcription: {e}")
             return "Error: Could not transcribe audio."
 
-    def speak_text(self, text: str):
-        print(f"Speaking: {text}")
-        self.tts_engine.say(text)
-        self.tts_engine.runAndWait()
+    def transcribe_recording(self) -> str:
+        """Transcribe the current recording"""
+        if not self.recording_data:
+            return "Error: No audio recorded."
 
-    def process_voice_command(self):
-        if self.noise_profile is None:
-            self._calibrate_noise()
-        self.listen_for_wake_word()
-        if self.record_audio():
-            transcribed_text = self.transcribe_audio("command.wav")
-            return transcribed_text
-        return "No command processed."
+        # Save recording to temporary file
+        temp_file = self.save_recording()
+        if not temp_file:
+            return "Error: Could not save recording."
+
+        try:
+            # Transcribe the file
+            result = self.transcribe_audio_file(temp_file)
+
+            # Clean up temporary file
+            os.remove(temp_file)
+
+            return result
+        except Exception as e:
+            return f"Error: {e}"
+
+    def speak_text(self, text: str) -> None:
+        """Convert text to speech"""
+        try:
+            print(f"Speaking: {text}")
+            self.tts_engine.say(text)
+            self.tts_engine.runAndWait()
+        except Exception as e:
+            print(f"TTS Error: {e}")
+
+    def record_and_transcribe(self, duration: float = 5.0) -> str:
+        """Simple recording method for testing - records for specified duration"""
+        print(f"Recording for {duration} seconds...")
+
+        try:
+            # Record audio for specified duration
+            recording = sd.rec(
+                int(duration * self.sample_rate),
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype=np.float32,
+            )
+            sd.wait()  # Wait until recording is finished
+
+            # Save to temporary file
+            temp_file = os.path.join(tempfile.gettempdir(), "test_recording.wav")
+            audio_int16 = (recording * 32767).astype(np.int16)
+            write(temp_file, self.sample_rate, audio_int16.flatten())
+
+            # Transcribe
+            result = self.transcribe_audio_file(temp_file)
+
+            # Clean up
+            os.remove(temp_file)
+
+            return result
+
+        except Exception as e:
+            return f"Error during recording: {e}"
+
+
+# Maintain backward compatibility - alias the old name
+AudioProcessor = SimpleAudioProcessor

@@ -77,7 +77,7 @@ Kali Linux comes with security tools pre-installed:
 ```bash
 # Verify security tools are available
 which burpsuite    # /usr/bin/burpsuite
-which wireshark    # /usr/bin/wireshark  
+which wireshark    # /usr/bin/wireshark
 which nmap         # /usr/bin/nmap
 which metasploit   # /usr/bin/msfconsole
 ```

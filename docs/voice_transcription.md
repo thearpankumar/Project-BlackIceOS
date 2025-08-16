@@ -20,7 +20,7 @@ The voice interface enables users to control cybersecurity tools through natural
     ```bash
     # Required API key for voice transcription
     GOOGLE_AI_API_KEY="YOUR_GOOGLE_AI_API_KEY"
-    
+
     # Authentication server
     AUTH_SERVER_URL="http://192.168.1.100:8000"
     ```
@@ -86,7 +86,7 @@ The voice interface is embedded in the main application GUI (`main.py`):
 - `subprocess` - System command execution
 
 **System Requirements:**
-- Python 3.9+ 
+- Python 3.9+
 - Active internet connection for Gemini API
 - Valid Google AI API key
 - X11 display system (for desktop automation)

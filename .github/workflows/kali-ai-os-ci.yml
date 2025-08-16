@@ -11,6 +11,7 @@ on:
     paths:
       - 'kali-ai-os/**'
       - '.github/workflows/kali-ai-os-ci.yml'
+  workflow_call:
 
 defaults:
   run:
@@ -51,7 +52,6 @@ jobs:
 
     - name: Run mypy type checking
       run: uv run mypy src/ --ignore-missing-imports
-      continue-on-error: true
 
   test:
     name: Test Suite
