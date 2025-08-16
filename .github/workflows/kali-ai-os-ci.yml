@@ -87,8 +87,8 @@ jobs:
           scrot \
           imagemagick \
           libgl1-mesa-dri \
-          libgl1-mesa-glx \
-          libegl1-mesa \
+          libgl1-mesa-dev \
+          libegl1-mesa-dev \
           libglib2.0-0 \
           libsm6 \
           libxext6 \
