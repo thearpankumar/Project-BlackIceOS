@@ -1,6 +1,6 @@
 import os
 import tempfile
-from typing import Any, TypedDict
+from typing import Any
 
 import google.generativeai as genai
 import numpy as np
@@ -8,11 +8,6 @@ import pyttsx3
 import sounddevice as sd
 from dotenv import load_dotenv
 from scipy.io.wavfile import write
-
-
-class AudioPart(TypedDict):
-    mime_type: str
-    data: bytes
 
 
 class SimpleAudioProcessor:
@@ -93,11 +88,12 @@ class SimpleAudioProcessor:
                 "Please transcribe this audio to text. Only return the transcribed"
                 " text, nothing else."
             )
-            audio_part: AudioPart = {
+            audio_part = {
                 "mime_type": "audio/wav",
                 "data": audio_content,
             }
-            response = self.stt_model.generate_content([prompt, audio_part])
+            content_parts: list[Any] = [prompt, audio_part]
+            response = self.stt_model.generate_content(content_parts)
 
             transcribed_text = str(response.text).strip() if response.text else ""
             print(f"Transcribed: '{transcribed_text}'")
