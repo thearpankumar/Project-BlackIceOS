@@ -2,7 +2,6 @@
 
 ## What This Task Is About
 This task creates the "user gateway" for Kali AI-OS - multiple ways to interact with the system:
-- **CLI Interface** - Professional command-line interface with intelligent autocomplete and history
 - **GUI Application** - Desktop application with visual workflow editor and real-time monitoring
 - **Web Interface** - Browser-based access for remote management and team collaboration
 - **Mobile App** - Smartphone/tablet interface for monitoring and lightweight operations
