@@ -89,7 +89,7 @@ class SimpleAudioProcessor:
                 " text, nothing else."
             )
             response = self.stt_model.generate_content(
-                [prompt, {"mime_type": "audio/wav", "data": audio_content}]  # type: ignore[arg-type]
+                [prompt, {"mime_type": "audio/wav", "data": audio_content}]
             )
 
             transcribed_text = str(response.text).strip() if response.text else ""
