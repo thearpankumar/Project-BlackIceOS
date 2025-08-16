@@ -51,7 +51,7 @@ jobs:
       run: uv run isort --check-only --diff .
 
     - name: Run mypy type checking
-      run: uv run mypy src/ --ignore-missing-imports
+      run: uv run mypy src/
 
   test:
     name: Test Suite
