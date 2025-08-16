@@ -1,6 +1,5 @@
 import os
 import time
-from typing import cast
 
 import requests
 from cryptography.fernet import Fernet
@@ -129,7 +128,7 @@ class AuthClient:
             fernet = Fernet(self.encryption_key)
             encrypted_data = self.encrypted_keys[key_name].encode()
             decrypted_bytes = fernet.decrypt(encrypted_data)
-            return cast(str, decrypted_bytes.decode('utf-8'))
+            return decrypted_bytes.decode('utf-8')
         except Exception as e:
             # Return mock decrypted key for testing
             print(f"Error decrypting key: {e}")  # Log the exception

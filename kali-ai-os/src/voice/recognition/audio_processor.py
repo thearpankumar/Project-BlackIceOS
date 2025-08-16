@@ -7,7 +7,7 @@ import numpy as np
 import pyttsx3
 import sounddevice as sd
 from dotenv import load_dotenv
-from scipy.io.wavfile import write  # type: ignore[import-untyped]
+from scipy.io.wavfile import write
 
 
 class SimpleAudioProcessor:
@@ -89,7 +89,7 @@ class SimpleAudioProcessor:
                 " text, nothing else."
             )
             response = self.stt_model.generate_content(
-                [prompt, {"mime_type": "audio/wav", "data": audio_content}]
+                [prompt, {"mime_type": "audio/wav", "data": audio_content}]  # type: ignore[arg-type]
             )
 
             transcribed_text = str(response.text).strip() if response.text else ""
