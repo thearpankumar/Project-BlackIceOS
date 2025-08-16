@@ -61,6 +61,7 @@ dev = [
     "mypy>=1.7.0",
     "types-requests",
     "types-psutil",
+    "scipy-stubs>=1.16.1.0",
 
     # Security & Safety
     "bandit>=1.7.5",
@@ -222,10 +223,4 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
-]
-
-[dependency-groups]
-dev = [
-    "scipy-stubs>=1.16.1.0",
-    "types-pillow>=10.2.0.20240822",
 ]
