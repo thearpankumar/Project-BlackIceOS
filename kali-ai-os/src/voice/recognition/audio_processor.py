@@ -1,6 +1,6 @@
 import os
 import tempfile
-from typing import Any
+from typing import Any, cast
 
 import google.generativeai as genai
 import numpy as np
@@ -9,11 +9,13 @@ import sounddevice as sd
 from dotenv import load_dotenv
 from scipy.io.wavfile import write
 
+from ..config.audio_config import AUDIO_CONFIG
+
 
 class SimpleAudioProcessor:
     """Simplified audio processor without wake word detection - button-based recording only"""
 
-    def __init__(self, sample_rate: int = 16000) -> None:
+    def __init__(self, sample_rate: int | None = None, device: int | None = None) -> None:
         load_dotenv()
         # Try GOOGLE_AI_API_KEY first, then fallback to GEMINI_API_KEY for compatibility
         self.api_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -25,9 +27,13 @@ class SimpleAudioProcessor:
             )
         genai.configure(api_key=self.api_key)
 
-        self.stt_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+        self.stt_model = genai.GenerativeModel(model_name="gemini-2.5-flash")
         self.tts_engine = pyttsx3.init()
-        self.sample_rate = sample_rate
+
+        # Use audio config values
+        self.sample_rate: int = sample_rate or cast(int, AUDIO_CONFIG["sample_rate"])
+        self.channels: int = cast(int, AUDIO_CONFIG["channels"])
+        self.device = device  # Audio input device
         self.is_recording = False
         self.recording_data: list[Any] = []
 
@@ -63,7 +69,7 @@ class SimpleAudioProcessor:
 
             # Convert to int16 for wav file
             audio_int16 = (audio_data * 32767).astype(np.int16)
-            write(filename, self.sample_rate, audio_int16)
+            write(filename, int(self.sample_rate), audio_int16)
 
             print(f"Recording saved to {filename}")
             return filename
@@ -95,9 +101,26 @@ class SimpleAudioProcessor:
             content_parts: list[Any] = [prompt, audio_part]
             response = self.stt_model.generate_content(content_parts)
 
-            transcribed_text = str(response.text).strip() if response.text else ""
-            print(f"Transcribed: '{transcribed_text}'")
-            return transcribed_text
+            # Handle response properly - check if content was generated
+            if response.candidates and response.candidates[0].content.parts:
+                transcribed_text = str(response.text).strip()
+                print(f"Transcribed: '{transcribed_text}'")
+                return transcribed_text
+            else:
+                # Check finish reason
+                if response.candidates:
+                    finish_reason = response.candidates[0].finish_reason
+                    print(f"Transcription blocked. Finish reason: {finish_reason}")
+                    if finish_reason == 1:  # STOP
+                        return "Audio content was filtered or invalid"
+                    elif finish_reason == 2:  # MAX_TOKENS
+                        return "Audio too long"
+                    elif finish_reason == 3:  # SAFETY
+                        return "Audio content filtered for safety"
+                    else:
+                        return "Audio not recognized"
+                else:
+                    return "No response from transcription service"
 
         except Exception as e:
             print(f"Error during transcription: {e}")
@@ -133,6 +156,43 @@ class SimpleAudioProcessor:
         except Exception as e:
             print(f"TTS Error: {e}")
 
+    def list_audio_devices(self) -> None:
+        """List available audio input devices"""
+        try:
+            devices = sd.query_devices()
+            print("=== Available Audio Devices ===")
+            for i, device in enumerate(devices):
+                if device['max_input_channels'] > 0:  # Input device
+                    default_marker = " (DEFAULT)" if i == sd.default.device[0] else ""
+                    print(f"Device {i}: {device['name']}{default_marker}")
+        except Exception as e:
+            print(f"Error listing devices: {e}")
+
+    def test_audio_device(self, device_id: int, duration: float = 3.0) -> str:
+        """Test audio recording with specific device"""
+        print(f"Testing device {device_id} for {duration} seconds...")
+        try:
+            recording = sd.rec(
+                int(duration * int(self.sample_rate)),
+                samplerate=int(self.sample_rate),
+                channels=1,
+                dtype=np.float32,
+                device=device_id,
+            )
+            sd.wait()
+
+            # Check if we got actual audio
+            max_amplitude = np.max(np.abs(recording))
+            if max_amplitude < 0.001:
+                return f"Device {device_id}: No audio detected (very quiet)"
+            elif max_amplitude > 0.8:
+                return f"Device {device_id}: Very loud/distorted audio detected"
+            else:
+                return f"Device {device_id}: Good audio level detected"
+
+        except Exception as e:
+            return f"Device {device_id}: Error - {e}"
+
     def record_and_transcribe(self, duration: float = 5.0) -> str:
         """Simple recording method for testing - records for specified duration"""
         print(f"Recording for {duration} seconds...")
@@ -140,17 +200,18 @@ class SimpleAudioProcessor:
         try:
             # Record audio for specified duration
             recording = sd.rec(
-                int(duration * self.sample_rate),
-                samplerate=self.sample_rate,
+                int(duration * int(self.sample_rate)),
+                samplerate=int(self.sample_rate),
                 channels=1,
                 dtype=np.float32,
+                device=self.device,
             )
             sd.wait()  # Wait until recording is finished
 
             # Save to temporary file
             temp_file = os.path.join(tempfile.gettempdir(), "test_recording.wav")
             audio_int16 = (recording * 32767).astype(np.int16)
-            write(temp_file, self.sample_rate, audio_int16.flatten())
+            write(temp_file, int(self.sample_rate), audio_int16.flatten())
 
             # Transcribe
             result = self.transcribe_audio_file(temp_file)

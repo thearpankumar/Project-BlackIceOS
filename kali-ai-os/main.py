@@ -14,15 +14,13 @@ import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-import google.generativeai as genai
 import numpy as np
 import sounddevice as sd
-from dotenv import load_dotenv
-from scipy.io.wavfile import write
 
 from src.auth.auth_client import AuthClient
 from src.desktop.automation.desktop_controller import DesktopController
 from src.desktop.viewer.viewer_manager import ViewerManager
+from src.voice.recognition.audio_processor import SimpleAudioProcessor
 
 
 class SamsungAIOSGUI:
@@ -58,23 +56,13 @@ class SamsungAIOSGUI:
         self.desktop_controller = None
         self.auth_client = None
         self.viewer_manager = None
+        self.audio_processor = None
 
         # Viewer state
         self.current_viewer_panel = None
         self.viewer_operation_in_progress = False
 
-        # Voice setup
-        load_dotenv()
-        self.api_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.llm_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-        else:
-            self.llm_model = None
-
-        # Audio config
-        self.sample_rate = 16000
-        self.recording_data = []
+        # Voice will be handled by audio processor
 
         # Setup
         self.logger = logging.getLogger(__name__)
@@ -205,6 +193,22 @@ class SamsungAIOSGUI:
         )
         self.stop_viewer_button.pack(side='left', padx=(0, 20))
 
+        # Audio test button
+        self.audio_test_button = tk.Button(
+            button_frame,
+            text="🔊 Test Audio",
+            font=('Arial', 14, 'bold'),
+            bg='#fd7e14',
+            fg='white',
+            command=self.test_audio_devices,
+            height=2,
+            width=20,
+            relief='raised',
+            bd=3,
+            state='disabled',
+        )
+        self.audio_test_button.pack(side='left', padx=(0, 20))
+
         # Content area - split for viewer
         content_frame = tk.Frame(main_frame, bg='#2d2d2d')
         content_frame.pack(fill='both', expand=True)
@@ -315,6 +319,7 @@ class SamsungAIOSGUI:
                     self.screenshot_button.config(state='normal')
                     self.vnc_button.config(state='normal')
                     self.stop_viewer_button.config(state='normal')
+                    self.audio_test_button.config(state='normal')
 
                 elif msg_type == 'reset_voice_button':
                     self.is_recording = False
@@ -346,6 +351,14 @@ class SamsungAIOSGUI:
                 self.update_status("Initializing display viewers...", 'orange')
                 self.viewer_manager = ViewerManager()
 
+                # Initialize audio processor
+                self.update_status("Initializing voice processing...", 'orange')
+                try:
+                    self.audio_processor = SimpleAudioProcessor()
+                    self.log_message("Voice processor initialized successfully", 'SUCCESS')
+                except Exception as e:
+                    self.log_message(f"Voice processor failed: {e}", 'WARNING')
+
                 if self.desktop_controller.is_initialized:
                     self.log_message("Desktop controller initialized successfully", 'SUCCESS')
                     self.log_message("Display viewers ready", 'SUCCESS')
@@ -360,11 +373,7 @@ class SamsungAIOSGUI:
                 except Exception as e:
                     self.log_message(f"Auth client failed: {e}", 'WARNING')
 
-                # Check voice setup
-                if self.llm_model:
-                    self.log_message("Voice processing ready (Gemini)", 'SUCCESS')
-                else:
-                    self.log_message("No API key - voice features disabled", 'WARNING')
+                # Voice setup is handled by audio processor above
 
                 # Log system status
                 if self.desktop_controller:
@@ -391,34 +400,26 @@ class SamsungAIOSGUI:
             messagebox.showwarning("Not Ready", "System is still initializing.")
             return
 
-        if not self.llm_model:
-            messagebox.showwarning("API Key Missing", "No Google AI API key found.")
+        if not self.audio_processor:
+            messagebox.showwarning("Audio Processor Missing", "Voice processing not available.")
             return
 
         if not self.is_recording:
-            # Start recording
+            # Start recording using audio processor
             self.is_recording = True
             self.voice_button.config(text="🛑 Stop Recording", bg='#dc3545')
             self.log_message("Voice recording started - speak your command")
-            self.recording_data = []
 
             def record_audio() -> None:
                 try:
-
-                    def audio_callback(
-                        indata: np.ndarray,
-                        frames: int,
-                        time: sd.CallbackFlags,
-                        status: sd.CallbackFlags,
-                    ) -> None:
-                        if self.is_recording:
-                            self.recording_data.append(indata.copy())
+                    self.audio_processor.start_recording()
 
                     with sd.InputStream(
-                        samplerate=self.sample_rate,
+                        samplerate=self.audio_processor.sample_rate,
                         channels=1,
-                        callback=audio_callback,
+                        callback=self.audio_processor.record_audio_data,
                         dtype=np.float32,
+                        device=self.audio_processor.device,
                     ):
                         while self.is_recording:
                             time.sleep(0.1)
@@ -430,44 +431,22 @@ class SamsungAIOSGUI:
             threading.Thread(target=record_audio, daemon=True).start()
 
         else:
-            # Stop and process
+            # Stop and process using audio processor
             self.is_recording = False
+            self.audio_processor.stop_recording()
             self.log_message("Processing recorded audio...")
 
             def process_audio() -> None:
                 try:
-                    if self.recording_data:
-                        # Save audio
-                        audio_data = np.concatenate(self.recording_data, axis=0)
-                        with tempfile.NamedTemporaryFile(
-                            delete=False, suffix=".wav"
-                        ) as tmp_audio_file:
-                            audio_file = tmp_audio_file.name
-                        audio_int16 = (audio_data * 32767).astype(np.int16)
-                        write(audio_file, self.sample_rate, audio_int16)
+                    # Use audio processor for transcription
+                    transcribed_text = self.audio_processor.transcribe_recording()
 
-                        # Transcribe
-                        with open(audio_file, 'rb') as f:
-                            audio_content = f.read()
-
-                        response = self.llm_model.generate_content(
-                            [
-                                "Transcribe this audio to English text only. "
-                                "Return just the transcribed text.",
-                                {"mime_type": "audio/wav", "data": audio_content},
-                            ]
-                        )
-
-                        transcribed_text = response.text.strip()
-                        self.log_message(f"Transcribed: '{transcribed_text}'", 'SUCCESS')
-
+                    if transcribed_text and not transcribed_text.startswith("Error"):
+                        self.log_message(f"✓ Transcribed: '{transcribed_text}'", 'SUCCESS')
                         # Execute command
                         self.execute_voice_command(transcribed_text)
-
-                        # Cleanup
-                        os.remove(audio_file)
                     else:
-                        self.log_message("No audio recorded", 'WARNING')
+                        self.log_message(f"Transcription failed: {transcribed_text}", 'WARNING')
 
                 except Exception as e:
                     self.log_message(f"Audio processing error: {e}", 'ERROR')
@@ -542,7 +521,7 @@ class SamsungAIOSGUI:
                     self.log_message("✗ No auth client", 'WARNING')
 
                 # Test voice
-                if self.llm_model:
+                if self.audio_processor:
                     self.log_message("✓ Voice processing available", 'SUCCESS')
                 else:
                     self.log_message("✗ Voice processing unavailable", 'WARNING')
@@ -578,6 +557,37 @@ class SamsungAIOSGUI:
                 self.log_message(f"Screenshot error: {e}", 'ERROR')
 
         threading.Thread(target=capture, daemon=True).start()
+
+    def test_audio_devices(self: "SamsungAIOSGUI") -> None:
+        """Test available audio input devices"""
+        if not self.audio_processor:
+            messagebox.showwarning("Audio Processor Missing", "Voice processing not available.")
+            return
+
+        def test_devices() -> None:
+            try:
+                self.log_message("Testing audio devices...")
+
+                # List available devices
+                self.audio_processor.list_audio_devices()
+
+                # Test a few common devices
+                for device_id in [None, 0, 1, 2]:  # None = default, then try 0,1,2
+                    try:
+                        result = self.audio_processor.test_audio_device(device_id or 0, 2.0)
+                        self.log_message(result)
+                    except Exception as e:
+                        self.log_message(f"Device {device_id}: Test failed - {e}", 'WARNING')
+
+                self.log_message("Audio device testing complete. Check logs above.", 'SUCCESS')
+                self.log_message(
+                    "If your microphone isn't working, try a different VM audio setting.", 'INFO'
+                )
+
+            except Exception as e:
+                self.log_message(f"Audio device test error: {e}", 'ERROR')
+
+        threading.Thread(target=test_devices, daemon=True).start()
 
     def start_vnc_viewer(self: "SamsungAIOSGUI") -> None:
         """Start VNC viewer for AI display"""
