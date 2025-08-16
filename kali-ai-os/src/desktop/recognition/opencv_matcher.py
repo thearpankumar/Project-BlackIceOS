@@ -154,7 +154,7 @@ class OpenCVMatcher:
             enhanced = cv2.merge([l_channel, a_channel, b_channel])
             enhanced = cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
 
-            return enhanced  # type: ignore[no-any-return]
+            return enhanced
 
         except Exception as e:
             self.logger.error(f"Screenshot preprocessing failed: {e}")

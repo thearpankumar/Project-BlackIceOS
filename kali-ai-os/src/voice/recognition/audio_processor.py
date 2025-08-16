@@ -7,6 +7,7 @@ import numpy as np
 import pyttsx3
 import sounddevice as sd
 from dotenv import load_dotenv
+from google.generativeai.types import Part
 from scipy.io.wavfile import write
 
 
@@ -89,7 +90,10 @@ class SimpleAudioProcessor:
                 " text, nothing else."
             )
             response = self.stt_model.generate_content(
-                [prompt, {"mime_type": "audio/wav", "data": audio_content}]
+                [
+                    Part.from_text(prompt),
+                    Part.from_data(data=audio_content, mime_type="audio/wav"),
+                ]
             )
 
             transcribed_text = str(response.text).strip() if response.text else ""
