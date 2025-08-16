@@ -83,13 +83,16 @@ repos:
         additional_dependencies:
           - numpy
           - scipy
+          - scipy-stubs
           - noisereduce
           - sounddevice
           - webrtcvad
           - pyttsx3
-          - google-generativeai
+          - google-generativeai==0.8.5
           - types-requests
           - types-psutil
+          - cryptography
+          - opencv-python
 
   - repo: local
     hooks:
