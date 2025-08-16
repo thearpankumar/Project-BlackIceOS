@@ -86,7 +86,7 @@ jobs:
           xdotool \
           scrot \
           imagemagick \
-          lib1-mesa-dri \
+          libgl1-mesa-dri \
           libgl1-mesa-glx \
           libegl1-mesa \
           libglib2.0-0 \
