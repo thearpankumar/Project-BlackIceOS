@@ -86,7 +86,7 @@ jobs:
           xdotool \
           scrot \
           imagemagick \
-          libgl1-mesa-dri \
+          lib1-mesa-dri \
           libgl1-mesa-glx \
           libegl1-mesa \
           libglib2.0-0 \
@@ -96,7 +96,8 @@ jobs:
           libgomp1 \
           libgtk-3-0 \
           libqt5widgets5 \
-          dbus-x11
+          dbus-x11 \
+          libsystemd-dev
 
     - name: Install dependencies
       run: uv sync --all-extras
