@@ -1,139 +1,173 @@
-# Task 2: Voice Recognition Engine
+# Task 2: Voice Interface Integration
 
 ## What This Task Is About
-This task creates the voice interface for Kali AI-OS that enables natural language interaction with security tools. The implementation uses an online service for high-accuracy speech recognition, a local wake word engine, and a local engine for voice feedback.
-- **Wake Word Detection** using `pvporcupine` to activate the AI without manual input (e.g., "Computer").
-- **Voice-to-Text Recognition** using `google-generativeai` for highly accurate, online transcription.
-- **Local Audio Recording** to capture the user's voice commands directly from the microphone after the wake word is detected.
-- **Local Text-to-Speech** using the system's native voice engine via `pyttsx3` for feedback.
-- **Intelligent Command Parsing** where the powerful `google-generativeai` model directly interprets security terms and extracts parameters, removing the need for a custom cybersecurity vocabulary.
+This task creates the voice interface for Samsung AI-OS that enables natural language interaction with security tools through a simple, GUI-based approach integrated directly into the main application.
+- **GUI Voice Button** - Simple 🎤 Voice Command button in the main interface
+- **Direct Gemini Integration** - Voice recordings sent directly to Google Gemini API for transcription
+- **Real-time Processing** - Commands processed through the same pipeline as text input
+- **Seamless Integration** - Voice commands trigger the same desktop automation as text commands
 
 ## Why This Task Is Critical
-- **Natural Interface**: Enables hands-free operation during security assessments.
-- **Accessibility**: Voice commands are faster than typing complex security tool syntax.
-- **Multitasking**: Users can continue working while giving voice commands.
-- **Unique Selling Point**: A voice-controlled cybersecurity OS.
+- **Natural Interface**: Enables hands-free operation during security assessments
+- **Simplicity**: No complex wake word detection or audio processing pipeline needed
+- **Integration**: Voice commands work through existing text command infrastructure
+- **User Experience**: Intuitive GUI button for voice activation
 
 ## How to Complete This Task - Step by Step
 
-### Phase 1: Setup Voice Environment (45 minutes)
+### Phase 1: Environment Setup (15 minutes)
 ```bash
-# 1. Install system audio dependencies (in VM)
+# 1. Basic audio system setup (minimal requirements)
 sudo apt update
-sudo apt install -y pulseaudio pulseaudio-utils alsa-utils
-sudo apt install -y portaudio19-dev python3-pyaudio
-sudo apt install -y espeak espeak-data libespeak-dev # For pyttsx3
+sudo apt install -y python3-sounddevice alsa-utils
 
-# 2. Setup Python environment with uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv add google-generativeai sounddevice scipy numpy pyttsx3 python-dotenv pvporcupine pyaudio
-uv add pytest pytest-asyncio pytest-mock --dev
-uv sync --all-extras
-
-# 3. Test audio system
+# 2. Test audio recording capability
 arecord -l  # List recording devices
-aplay -l   # List playback devices
-arecord -f cd -t wav -d 5 test.wav && aplay test.wav  # Test microphone
+python3 -c "import sounddevice; print('Audio system ready')"
 
-# 4. Configure API Keys for Development
-# In the final system, API keys will be provided by the auth server.
-# For local development, you will need to create a .env file in the project root.
-# The auth server task (.env.example) defines the production variables.
-# For this task, you can create a separate .env with these keys:
-echo 'GOOGLE_AI_API_KEY="YOUR_GOOGLE_AI_API_KEY"' > .env
-echo 'PICOVOICE_ACCESS_KEY="YOUR_PICOVOICE_ACCESS_KEY"' >> .env
-# Get a free PicoVoice Access Key from https://console.picovoice.ai/
+# 3. Verify API key configuration
+# Voice processing uses the same Google AI API key as text processing
+# Configured in main .env file:
+echo 'GOOGLE_AI_API_KEY="YOUR_GOOGLE_AI_API_KEY"' >> .env
 ```
 
-### Phase 2: Write Voice Tests First (1 hour)
+### Phase 2: Voice Integration Implementation (45 minutes)
 ```python
-# tests/voice/test_recognition.py - Create comprehensive tests
+# Integration with main.py GUI - Voice button functionality
+
+def toggle_voice_recording(self):
+    """Handle voice button click - start/stop recording"""
+    if not self.is_recording:
+        # Start voice recording
+        self.is_recording = True
+        self.voice_button.config(
+            text="🛑 Stop Recording",
+            bg='#dc3545'
+        )
+        
+        # Start recording in background thread
+        def record_audio():
+            try:
+                # Record audio using sounddevice
+                def audio_callback(indata, frames, time, status):
+                    if self.is_recording:
+                        self.recording_data.append(indata.copy())
+                        
+                # Start audio stream
+                stream = sd.InputStream(callback=audio_callback)
+                stream.start()
+                
+                # Wait for recording to stop
+                while self.is_recording:
+                    time.sleep(0.1)
+                    
+                stream.stop()
+                
+            except Exception as e:
+                self.log_message(f"Recording error: {e}", 'ERROR')
+        
+        threading.Thread(target=record_audio, daemon=True).start()
+    
+    else:
+        # Stop recording and process with Gemini
+        self.is_recording = False
+        self.process_voice_with_gemini()
+
+def process_voice_with_gemini(self):
+    """Process recorded audio with Gemini API"""
+    try:
+        # Convert recording data to audio file
+        audio_data = np.concatenate(self.recording_data)
+        
+        # Save as temporary WAV file
+        temp_file = "/tmp/voice_command.wav"
+        sf.write(temp_file, audio_data, 44100)
+        
+        # Upload to Gemini for transcription
+        audio_file = genai.upload_file(path=temp_file)
+        response = self.ai_model.generate_content([
+            "Transcribe this audio clearly:", 
+            audio_file
+        ])
+        
+        # Process transcribed text as command
+        transcribed_text = response.text.strip()
+        self.command_entry.delete(0, tk.END)
+        self.command_entry.insert(0, transcribed_text)
+        
+        # Execute the command automatically
+        self.process_command()
+        
+    except Exception as e:
+        self.log_message(f"Voice processing error: {e}", 'ERROR')
+    finally:
+        # Reset voice button
+        self.voice_button.config(
+            text="🎤 Voice Command",
+            bg='#1e7ce8'
+        )
+```
+
+### Phase 3: Testing Voice Integration (30 minutes)
+```python
+# tests/voice/test_voice_integration.py
 import pytest
 from unittest.mock import patch, MagicMock
 
-def test_wake_word_detection_initialization():
-    """Test that the wake word detector initializes correctly."""
-    # This test would verify that pvporcupine is called with the correct keys.
+def test_voice_button_functionality():
+    """Test voice button toggles recording state"""
+    # Test button text changes when recording starts/stops
+    # Test recording state management
+    
+@patch('sounddevice.InputStream')
+def test_audio_recording_integration(mock_stream):
+    """Test audio recording through sounddevice"""
+    # Test recording starts and captures audio data
+    # Test recording stops cleanly
+    
+@patch('google.generativeai.upload_file')
+@patch('google.generativeai.GenerativeModel.generate_content')
+def test_gemini_transcription(mock_generate, mock_upload):
+    """Test Gemini API integration for voice transcription"""
+    mock_response = MagicMock()
+    mock_response.text = "open terminal and scan 192.168.1.1"
+    mock_generate.return_value = mock_response
+    
+    # Test voice file upload and transcription
+    # Test transcribed text integration with command system
 
-@patch('sounddevice.rec')
-@patch('sounddevice.wait')
-def test_audio_recording(mock_wait, mock_rec):
-    """Test that audio is recorded correctly from the microphone."""
-    # Test recording a short audio clip and verify the file is created and parameters are correct.
-
-def test_speech_to_text_transcription():
-    """Test basic speech-to-text with Google GenAI."""
-    # Test with a pre-recorded audio sample of a security command.
-
-def test_local_text_to_speech_generation():
-    """Test local text-to-speech generation."""
-    # Test that pyttsx3 can generate audible speech from text.
+def test_voice_command_execution():
+    """Test voice commands trigger same actions as text commands"""
+    # Test voice "open terminal" = text "open terminal"
+    # Test command processing pipeline integration
 ```
 
-### Phase 3: Core Implementation (3 hours)
+### Phase 4: User Experience & Validation (15 minutes)
 ```python
-# src/voice/recognition/audio_processor.py
-# (This is a more detailed implementation plan)
-import os
-import struct
-import sounddevice as sd
-from scipy.io.wavfile import write
-import google.generativeai as genai
-import pyttsx3
-import pvporcupine
-import pyaudio
-from dotenv import load_dotenv
+# Voice command examples that work through the GUI:
 
-class AudioProcessor:
-    def __init__(self):
-        load_dotenv()
-        self.api_key = os.getenv("GOOGLE_AI_API_KEY")
-        self.picovoice_key = os.getenv("PICOVOICE_ACCESS_KEY")
+# User clicks 🎤 Voice Command button
+# Records: "open terminal and run nmap scan on 192.168.1.1"
+# System transcribes and executes automatically
 
-        if not self.api_key:
-            raise ValueError("GOOGLE_AI_API_KEY not found. Please set it in your .env file.")
-        genai.configure(api_key=self.api_key)
+# User clicks 🎤 Voice Command button  
+# Records: "launch burp suite and configure proxy"
+# System processes as text command
 
-        self.stt_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-        self.tts_engine = pyttsx3.init()
+# User clicks 🎤 Voice Command button
+# Records: "take a screenshot of the current desktop"
+# System captures AI desktop screenshot
 
-    def listen_for_wake_word(self):
-        # ... implementation ...
-
-    def record_audio(self, filename="command.wav", duration=5, sr=44100):
-        # ... implementation ...
-
-    def transcribe_audio(self, audio_file_path: str) -> str:
-        # ... implementation ...
-
-    def speak_text(self, text: str):
-        # ... implementation ...
-
-    def process_voice_command(self, duration=5):
-        # ... implementation ...
-```
-
-### Phase 4: Integration & Testing (1 hour)
-```python
-# main.py - Example usage
-from src.voice.recognition.audio_processor import AudioProcessor
-
-def main():
-    processor = AudioProcessor()
-
-    # Listen for wake word, then get a voice command
-    processor.speak_text("I am ready. Say the wake word to begin.")
-    command = processor.process_voice_command(duration=5)
-
-    # The 'command' text can now be sent to the AI processing layer (Task 4)
-    processor.speak_text(f"Executing command: {command}")
-
-if __name__ == "__main__":
-    main()
+# Integration validation:
+# 1. Voice button appears in main GUI
+# 2. Recording works without audio setup complexity
+# 3. Gemini transcription is accurate for security terms
+# 4. Voice commands execute same as text commands
+# 5. Error handling works for poor audio/network issues
 ```
 
 ## Overview
-Build a voice recognition system using `pvporcupine` for wake word detection, `google-generativeai` for online speech-to-text, and `pyttsx3` for local text-to-speech. This system runs in the Kali AI-OS VM and processes voice commands for security operations.
+Build a simple, GUI-integrated voice interface using `sounddevice` for audio recording and `google-generativeai` for direct speech-to-text transcription. This system is embedded in the main Samsung AI-OS GUI and processes voice commands through the existing text command pipeline.
 
 ## Directory Structure
 ```
@@ -159,145 +193,167 @@ Samsung-AI-os/
 ```
 
 ## Technology Stack
-- **Wake Word Detection**: `pvporcupine`
-- **STT Engine**: `google-generativeai` (online recognition)
-- **Audio Recording**: `sounddevice`, `scipy`, `numpy`, `pyaudio`
-- **Text-to-Speech**: `pyttsx3`, `espeak`
-- **Development**: `uv`, `pytest`, `pytest-mock`
+- **GUI Integration**: `tkinter` (built into main.py)
+- **Audio Recording**: `sounddevice` (simple recording)
+- **Speech-to-Text**: `google-generativeai` (direct transcription)
+- **File Handling**: `soundfile` (WAV file creation)
+- **Development**: `pytest` (simple integration tests)
 
 ## Implementation Requirements
 
 ### Core Components
 
-#### 1. Wake Word Detection
+#### 1. Voice Button Integration
 ```python
-# src/voice/recognition/audio_processor.py (listen_for_wake_word method)
-def listen_for_wake_word(self):
-    """Listens for a wake word and returns when one is detected."""
-    if not self.picovoice_key:
-        print("PICOVOICE_ACCESS_KEY not set. Manual start required.")
-        input("Press Enter to start recording...")
-        return
-
-    porcupine = None
-    audio_stream = None
-    pa = None
-    try:
-        porcupine = pvporcupine.create(access_key=self.picovoice_key, keywords=['computer'])
-        pa = pyaudio.PyAudio()
-        audio_stream = pa.open(
-            rate=porcupine.sample_rate, channels=1, format=pyaudio.paInt16,
-            input=True, frames_per_buffer=porcupine.frame_length
-        )
-        print("--- Listening for wake word ('computer') ---")
-        while True:
-            pcm = audio_stream.read(porcupine.frame_length)
-            pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
-            if porcupine.process(pcm) >= 0:
-                print("Wake word detected!")
-                break
-    finally:
-        if porcupine: porcupine.delete()
-        if audio_stream: audio_stream.close()
-        if pa: pa.terminate()
+# Integration with main.py GUI - Voice button in tkinter interface
+def setup_voice_interface(self):
+    """Setup voice button in main GUI"""
+    self.voice_button = tk.Button(
+        self.button_frame,
+        text="🎤 Voice Command",
+        command=self.toggle_voice_recording,
+        bg='#1e7ce8',
+        fg='white',
+        font=('Arial', 10, 'bold'),
+        relief='raised',
+        borderwidth=2
+    )
+    self.voice_button.grid(row=0, column=4, padx=5, pady=5)
+    
+    # Initialize voice recording state
+    self.is_recording = False
+    self.recording_data = []
 ```
 
-#### 2. Speech-to-Text (STT)
+#### 2. Simple Audio Recording
 ```python
-# src/voice/recognition/audio_processor.py (transcribe_audio method)
-def transcribe_audio(self, audio_file_path: str) -> str:
-    """Transcribes audio file to text using Google GenAI."""
+# Direct audio recording with sounddevice - no complex processing
+def start_voice_recording(self):
+    """Start recording audio using sounddevice"""
     try:
-        print("Uploading and transcribing audio...")
-        audio_file = genai.upload_file(path=audio_file_path)
-        response = self.stt_model.generate_content(
-            ["Transcribe the following audio:", audio_file]
-        )
-        return response.text
+        import sounddevice as sd
+        import soundfile as sf
+        
+        # Configure recording parameters
+        duration = 10  # Maximum 10 seconds
+        sample_rate = 44100
+        
+        # Record audio
+        audio_data = sd.rec(int(duration * sample_rate), 
+                           samplerate=sample_rate, 
+                           channels=1, 
+                           dtype='float64')
+        
+        # Save as temporary file
+        temp_file = "/tmp/voice_command.wav"
+        sf.write(temp_file, audio_data, sample_rate)
+        
+        return temp_file
+        
     except Exception as e:
-        print(f"Error during transcription: {e}")
-        return "Error: Could not transcribe audio."
+        self.log_message(f"Recording error: {e}", 'ERROR')
+        return None
 ```
 
 ## Testing Strategy
 
-### Unit Tests (80% coverage minimum)
+### Unit Tests (20% coverage minimum - matching current codebase standards)
 ```bash
-# Run voice recognition tests using uv
+# Run voice integration tests using uv
 uv run pytest tests/voice/ -v --cov=src.voice --cov-report=html
 
 # Expected test categories:
-# - Wake word detection initialization and processing (mocked)
-# - Audio recording parameters and file output
-# - STT transcription accuracy with sample files
-# - TTS speech generation
-# - Graceful error handling for API failures
+# - Voice button functionality and state management
+# - Audio recording with sounddevice (mocked)
+# - Gemini API transcription integration
+# - Error handling for recording/network failures
 ```
 ```python
-# tests/voice/test_recognition.py
+# tests/voice/test_voice_integration.py
 import pytest
 from unittest.mock import patch, MagicMock
-from src.voice.recognition.audio_processor import AudioProcessor
 
-@patch('pvporcupine.create')
-def test_wake_word_initialization(mock_pv_create):
-    """Test that pvporcupine is initialized with the correct access key and keywords."""
-    processor = AudioProcessor()
-    processor.listen_for_wake_word()
-    mock_pv_create.assert_called_with(access_key=processor.picovoice_key, keywords=['computer'])
+@patch('sounddevice.rec')
+@patch('soundfile.write')
+def test_audio_recording(mock_sf_write, mock_sd_rec):
+    """Test audio recording functionality"""
+    # Mock audio data
+    mock_audio_data = [[0.1], [0.2], [0.3]]
+    mock_sd_rec.return_value = mock_audio_data
+    
+    # Test recording process
+    from main import VoiceInterface  # Assuming integration in main.py
+    voice = VoiceInterface()
+    temp_file = voice.start_voice_recording()
+    
+    assert temp_file == "/tmp/voice_command.wav"
+    mock_sd_rec.assert_called_once()
+    mock_sf_write.assert_called_once_with("/tmp/voice_command.wav", mock_audio_data, 44100)
 
+@patch('google.generativeai.upload_file')
 @patch('google.generativeai.GenerativeModel.generate_content')
-def test_transcription_api_call(mock_generate_content):
-    """Test that the Google GenAI API is called correctly."""
-    # Mock the response from the API
+def test_gemini_transcription(mock_generate, mock_upload):
+    """Test Gemini API transcription"""
+    # Mock Gemini response
     mock_response = MagicMock()
-    mock_response.text = "scan example.com"
-    mock_generate_content.return_value = mock_response
-
-    processor = AudioProcessor()
-    # Assume 'test.wav' is a valid dummy file
-    result = processor.transcribe_audio('test.wav')
-
-    assert result == "scan example.com"
-    mock_generate_content.assert_called_once()
+    mock_response.text = "open terminal and run nmap scan"
+    mock_generate.return_value = mock_response
+    
+    from main import VoiceInterface
+    voice = VoiceInterface()
+    result = voice.process_voice_with_gemini("/tmp/test.wav")
+    
+    assert result == "open terminal and run nmap scan"
+    mock_upload.assert_called_once_with(path="/tmp/test.wav")
+    mock_generate.assert_called_once()
 ```
 
 ### Integration Tests
-- Test the full pipeline: wake word -> record -> transcribe -> speak.
-- Test with a real microphone in the VM to ensure audio hardware is correctly configured.
-- Test failure modes, such as an invalid Google API key or no internet connection.
+- Test the complete workflow: button click -> record -> transcribe -> command execution
+- Test audio system availability in VM environment
+- Test graceful fallback when audio hardware unavailable
+- Test network failure handling for Gemini API calls
 
 ## VM Integration
 
-### Audio System Setup in Kali VM
+### Minimal Audio System Setup
 ```bash
-# Install audio dependencies in VM
+# Install minimal audio dependencies for recording
 sudo apt update
-sudo apt install -y pulseaudio pulseaudio-utils alsa-utils
-sudo apt install -y portaudio19-dev python3-pyaudio
-sudo apt install -y espeak espeak-data libespeak-dev
+sudo apt install -y python3-sounddevice alsa-utils
 
-# Configure audio passthrough from host
-echo "load-module module-udev-detect" >> ~/.config/pulse/default.pa
-echo "load-module module-native-protocol-unix" >> ~/.config/pulse/default.pa
-
-# Test audio setup
+# Test basic audio recording capability
 arecord -l  # List recording devices
-aplay -l   # List playback devices
-arecord -f cd -t wav -d 5 test.wav && aplay test.wav
+python3 -c "import sounddevice; print('Audio system ready')"
+
+# Simple recording test
+python3 -c "
+import sounddevice as sd
+import soundfile as sf
+print('Recording 3 seconds...')
+audio = sd.rec(int(3 * 44100), samplerate=44100, channels=1)
+sd.wait()
+sf.write('test.wav', audio, 44100)
+print('Recording saved to test.wav')
+"
 ```
 
 ## Deployment & Testing
 
 ### Setup Commands with uv
 ```bash
-# 1. Install all dependencies
-uv sync --all-extras
+# 1. Install voice dependencies
+uv add sounddevice soundfile
+uv sync
 
-# 2. Configure API keys in .env file
-# (As described in Phase 1)
+# 2. Verify API key configuration
+# Voice uses same Google AI API key as main application
+echo 'GOOGLE_AI_API_KEY="YOUR_API_KEY"' >> .env
 
-# 3. Run comprehensive tests
+# 3. Test audio system
+python3 -c "import sounddevice; print('Audio ready')"
+
+# 4. Run voice integration tests
 uv run pytest tests/voice/ -v
 ```
 
@@ -305,67 +361,59 @@ uv run pytest tests/voice/ -v
 ✅ **Must pass before considering task complete:**
 
 1.  **Functionality Tests**
-    -   Wake word detection works reliably.
-    -   STT recognizes cybersecurity terms accurately (>95%).
-    -   Audio is recorded clearly.
-    -   TTS output is clear and understandable.
-    -   Full listen -> record -> transcribe -> speak loop works.
+    -   Voice button appears and toggles recording state correctly
+    -   Audio recording works without complex setup
+    -   Gemini transcription accurately processes security commands
+    -   Transcribed text integrates with existing command pipeline
+    -   Voice commands execute same actions as text commands
 
 2.  **Integration Tests**
-    -   Correctly uses API keys from the environment.
-    -   Handles potential network errors gracefully when calling the Google API.
-    -   Handles missing PicoVoice key by falling back to manual start.
+    -   Uses existing Google AI API key from .env file
+    -   Handles network errors gracefully during transcription
+    -   Works with existing GUI layout and design
+    -   Integrates seamlessly with current authentication system
 
 3.  **Performance Tests**
-    -   Recognition latency (including network) is under 3 seconds for a 5-second clip.
-    -   Wake word listener has low, constant CPU overhead.
+    -   Voice processing completes within 5 seconds for 10-second clips
+    -   No impact on main application responsiveness
+    -   Minimal memory overhead during recording
 
 ### Success Metrics
-- ✅ 95%+ wake word detection accuracy.
-- ✅ 95%+ cybersecurity term recognition accuracy.
-- ✅ <3s voice processing latency (post-recording).
-- ✅ All integration tests pass.
-- ✅ Audio system configured and working in the VM.
+- ✅ Voice button functional in main GUI
+- ✅ 90%+ transcription accuracy for security commands
+- ✅ <5s total voice processing time
+- ✅ Seamless integration with existing command system
+- ✅ Zero complex audio processing dependencies
 
 ## Configuration Files
 
-### voice_requirements.txt
-```txt
-# Voice Recognition & AI
-google-generativeai
-python-dotenv
-
-# Wake Word
-pvporcupine
-pyaudio
-
-# Audio Recording
-sounddevice
-scipy
-numpy
-
-# Text-to-Speech
-pyttsx3
-
-# Testing
-pytest
-pytest-asyncio
-pytest-mock
+### Voice Dependencies (added to main pyproject.toml)
+```toml
+# Add to existing dependencies in pyproject.toml
+[project]
+dependencies = [
+    # ... existing dependencies ...
+    "sounddevice>=0.4.0",
+    "soundfile>=0.12.0",
+    # google-generativeai already included
+]
 ```
 
-### Audio Configuration
+### Voice Configuration
 ```python
-# src/voice/config/audio_config.py
-AUDIO_CONFIG = {
+# Voice settings integrated into main.py configuration
+VOICE_CONFIG = {
     'sample_rate': 44100,
-    'record_duration_seconds': 5,
+    'max_duration_seconds': 10,
     'channels': 1,
-    'wake_words': ['computer'],
-    'wake_word_sensitivity': 0.5
+    'temp_file_path': '/tmp/voice_command.wav',
+    'button_text_recording': '🛑 Stop Recording',
+    'button_text_idle': '🎤 Voice Command'
 }
 ```
 
 ## Next Steps
 After completing this task:
-1.  Integrate the transcribed text output with the AI Processing Layer (Task 4).
-2.  Proceed to Task 3: Desktop Automation Core.
+1. Voice commands integrate directly with existing command processing pipeline
+2. Proceed to Task 3: Desktop Automation Core with template → agentic AI evolution
+3. Future enhancement: Direct screenshot-to-AI decision making replaces current hybrid approach
