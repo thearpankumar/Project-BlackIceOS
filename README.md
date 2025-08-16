@@ -19,7 +19,7 @@ Samsung AI-OS transforms cybersecurity workflows by combining the power of Kali 
 # Traditional approach
 $ nmap -sS -A -O target.com && nikto -h target.com && gobuster dir -u target.com
 
-# Samsung AI-OS approach  
+# Samsung AI-OS approach
 🗣️ "Scan target.com with nmap stealth scan, run nikto, and enumerate directories"
 ```
 
@@ -78,7 +78,7 @@ sequenceDiagram
 - **Desktop Automation** - GUI control for any security application
 - **AI Processing** - Command interpretation and workflow orchestration
 
-### Security Features  
+### Security Features
 - **Zero Trust Model** - API keys never stored on disk in VM
 - **Isolated Execution** - Dual desktop prevents interference
 - **Complete Audit Trail** - All actions logged and monitored
@@ -130,7 +130,7 @@ uv run python main.py
 
 - **Backend**: FastAPI, PostgreSQL, SQLAlchemy, Redis
 - **AI/ML**: Google Generative AI, Vosk STT, PicoVoice Wake Word
-- **Desktop**: PyAutoGUI, OpenCV, X11 Virtual Displays  
+- **Desktop**: PyAutoGUI, OpenCV, X11 Virtual Displays
 - **Security**: JWT Authentication, Fernet Encryption, bcrypt
 - **Infrastructure**: Docker Compose, uv Package Manager
 
@@ -138,7 +138,7 @@ uv run python main.py
 
 We welcome contributions! Please see our [Development Workflow](DEVELOPMENT_WORKFLOW.md) for:
 - Setting up the development environment
-- Code standards and testing requirements  
+- Code standards and testing requirements
 - Pull request process
 - Security considerations
 
@@ -158,7 +158,7 @@ This project is licensed under the Creative Commons Attribution-NonCommercial 4.
 
 <div align="center">
 
-**Built for Samsung Hackathon 2024**  
+**Built for Samsung Hackathon 2024**
 *Revolutionizing cybersecurity through AI-powered voice control*
 
 [🔗 Documentation](docs/) • [🚀 Quick Start](#quick-start) • [🤝 Contributing](DEVELOPMENT_WORKFLOW.md)
