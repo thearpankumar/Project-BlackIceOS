@@ -75,11 +75,56 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
 
-    - name: Install PortAudio
-      run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          portaudio19-dev \
+          xvfb \
+          x11-utils \
+          wmctrl \
+          xdotool \
+          scrot \
+          imagemagick \
+          libgl1-mesa-dri \
+          libgl1-mesa-glx \
+          libegl1-mesa \
+          libglib2.0-0 \
+          libsm6 \
+          libxext6 \
+          libxrender-dev \
+          libgomp1 \
+          libgtk-3-0 \
+          libqt5widgets5 \
+          dbus-x11
 
     - name: Install dependencies
       run: uv sync --all-extras
 
-    - name: Run tests
-      run: uv run pytest tests/ --verbose --tb=short
+    - name: Run unit tests (non-desktop)
+      run: |
+        export ENVIRONMENT=test
+        uv run pytest tests/auth/ tests/integration/ -v --tb=short
+      env:
+        ENVIRONMENT: test
+
+    - name: Run desktop tests with virtual display
+      run: |
+        export ENVIRONMENT=test
+        export DISPLAY=:99
+        xvfb-run -a -s "-screen 0 1920x1080x24 -ac +extension GLX +render -noreset" \
+          uv run pytest tests/desktop/ -v --tb=short \
+          --disable-warnings \
+          -x
+      env:
+        ENVIRONMENT: test
+        DISPLAY: :99
+
+    - name: Upload coverage reports
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: kali-ai-os
+        name: kali-ai-os-coverage
+      continue-on-error: true
