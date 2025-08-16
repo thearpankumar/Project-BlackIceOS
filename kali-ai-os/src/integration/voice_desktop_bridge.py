@@ -243,7 +243,7 @@ class VoiceDesktopBridge:
 
             # Use AI to interpret command and generate actions
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
 
             prompt = f"""
             Convert this voice command into desktop automation actions for a cybersecurity VM:
