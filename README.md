@@ -121,8 +121,8 @@ uv run python main.py
 | Task | Component | Status |
 |------|-----------|--------|
 | **[Task 1](tasks/task1_auth_server.md)** | Authentication Server | ✅ Complete |
-| **[Task 2](tasks/task2_voice_engine.md)** | Voice Recognition Engine | 🔄 In Progress |
-| **[Task 3](tasks/task3_desktop_automation.md)** | Desktop Automation | 📋 Planned |
+| **[Task 2](tasks/task2_voice_engine.md)** | Voice Recognition Engine | ✅ Complete |
+| **[Task 3](tasks/task3_desktop_automation.md)** | Desktop Automation | 🔄 In Progress |
 | **[Task 4](tasks/task4_ai_processing.md)** | AI Processing Layer | 📋 Planned |
 | **[Task 5](tasks/task5_security_tools.md)** | Security Tool Integration | 📋 Planned |
 
