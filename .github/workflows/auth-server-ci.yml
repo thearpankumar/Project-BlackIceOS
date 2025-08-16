@@ -11,6 +11,7 @@ on:
     paths:
       - 'auth-server/**'
       - '.github/workflows/auth-server-ci.yml'
+  workflow_call:
 
 defaults:
   run:
@@ -48,7 +49,6 @@ jobs:
 
     - name: Run mypy type checking
       run: uv run mypy app/ --ignore-missing-imports
-      continue-on-error: true  # Don't fail on type errors initially
 
   test:
     name: Test Suite
@@ -256,7 +256,23 @@ jobs:
         docker compose up -d --build
 
         # Wait for services to be ready
-        sleep 30
+        echo "Waiting for services to become healthy..."
+        for i in {1..60}; do
+          HEALTH_AUTH=$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q auth-server))
+          HEALTH_POSTGRES=$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q postgres))
+          HEALTH_REDIS=$(docker inspect --format='{{.State.Health.Status}}' $(docker compose ps -q redis))
+          if [ "$HEALTH_AUTH" = "healthy" ] && [ "$HEALTH_POSTGRES" = "healthy" ] && [ "$HEALTH_REDIS" = "healthy" ]; then
+            echo "✅ All services are healthy."
+            break
+          fi
+          echo "Waiting... Auth: $HEALTH_AUTH, Postgres: $HEALTH_POSTGRES, Redis: $HEALTH_REDIS ($i/60)"
+          sleep 2
+        done
+
+        if [ "$HEALTH_AUTH" != "healthy" ] || [ "$HEALTH_POSTGRES" != "healthy" ] || [ "$HEALTH_REDIS" != "healthy" ]; then
+          echo "❌ Services did not become healthy in time."
+          exit 1
+        fi
 
     - name: Run integration tests
       run: |
