@@ -1,73 +1,137 @@
-# Kali AI OS Voice Engine
+# Samsung AI-OS Voice Interface
 
-This document provides an overview of the voice engine for the Kali AI OS project.
+This document provides an overview of the voice interface implementation in Samsung AI-OS.
 
 ## Overview
 
-The voice engine is responsible for listening for a wake word, recording voice commands, transcribing them to text, and providing text-to-speech functionality. It uses a combination of local and cloud-based services to achieve this.
+The voice interface enables users to control cybersecurity tools through natural language commands. The current implementation uses Google's Gemini API for direct voice transcription and processing, integrated into the main GUI application.
 
-## Features
+## Current Implementation
 
-- **Wake Word Detection:** Listens for the wake word "computer" using the Porcupine wake word engine.
-- **Voice Activity Detection (VAD):** Automatically detects when speech has started and stopped to record commands accurately.
-- **Noise Reduction:** Calibrates for ambient noise to improve transcription accuracy.
-- **Speech-to-Text (STT):** Uses Google's Generative AI (Gemini 1.5 Flash) to transcribe voice commands.
-- **Text-to-Speech (TTS):** Uses a local TTS engine (`pyttsx3`) to speak responses.
+- **Direct Voice Input:** Voice recording through the main GUI application
+- **Google Gemini Integration:** Direct transcription using Google's Generative AI
+- **Command Processing:** Voice commands processed alongside text input
+- **GUI Integration:** Voice interface embedded in the main Samsung AI-OS GUI
 
 ## How to Use
 
 1.  **Set up Environment Variables:**
-    Create a `.env` file in the `kali-ai-os` directory with the following variables:
-    ```
+    Create a `.env` file in the `kali-ai-os` directory:
+    ```bash
+    # Required API key for voice transcription
     GOOGLE_AI_API_KEY="YOUR_GOOGLE_AI_API_KEY"
-    PICOVOICE_ACCESS_KEY="YOUR_PICOVOICE_ACCESS_KEY"
+    
+    # Authentication server
+    AUTH_SERVER_URL="http://192.168.1.100:8000"
     ```
 
 2.  **Install Dependencies:**
-    Navigate to the `kali-ai-os` directory and run:
     ```bash
-    uv sync --all-extras
+    # Install system dependencies
+    sudo apt update && sudo apt install -y \
+      python3 python3-pip python3-venv \
+      xvfb x11-utils wmctrl xdotool
+
+    # Install Python dependencies
+    cd kali-ai-os
+    uv sync
     ```
 
-3.  **Run the Main Script:**
-    From the `kali-ai-os` directory, run:
+3.  **Run the Application:**
     ```bash
-    python main.py
+    uv run python main.py
     ```
 
-The script will then:
-1.  Calibrate for ambient noise.
-2.  Listen for the wake word "computer".
-3.  Once the wake word is detected, it will listen for a voice command.
-4.  After you stop speaking, it will transcribe the command and print it to the console.
+4.  **Using Voice Commands:**
+    - Click the "🎤 Voice Input" button in the GUI
+    - Speak your command clearly
+    - Commands are processed by Google Gemini API
+    - Results appear in the response area
 
-## Configuration
+## Voice Command Examples
 
-The audio configuration can be modified in `kali-ai-os/src/voice/config/audio_config.py`. The default settings are:
+The voice interface supports natural language commands for cybersecurity tasks:
 
-```python
-AUDIO_CONFIG = {
-    "sample_rate": 44100,
-    "record_duration_seconds": 5,
-    "channels": 1,
-    "wake_words": ["computer"],
-    "wake_word_sensitivity": 0.5,
-}
+```
+"Open terminal and run nmap scan on 192.168.1.1"
+"Launch Burp Suite and configure proxy for example.com"
+"Start Wireshark packet capture"
+"Take a screenshot of the current scan results"
+"Open file manager and browse to downloads"
+"Run calculator to calculate subnet ranges"
 ```
 
-## Dependencies
+## Technical Implementation
 
-The main dependencies for this project are:
+### Google Gemini Integration
+- Voice commands are directly processed by Google's Gemini API
+- No local speech processing required
+- Real-time transcription and interpretation
+- Natural language understanding for cybersecurity contexts
 
-- `google-generativeai`
-- `python-dotenv`
-- `pvporcupine`
-- `pyaudio`
-- `sounddevice`
-- `scipy`
-- `numpy`
-- `pyttsx3`
-- `webrtcvad`
-- `setuptools<66`
+### GUI Integration
+The voice interface is embedded in the main application GUI (`main.py`):
+- Voice input button activates recording
+- Commands processed through the same pipeline as text input
+- Results displayed in the main interface
+- Integration with desktop automation system
 
-Development dependencies include `pytest`, `ruff`, `black`, `isort`, and `mypy`.
+### Dependencies
+
+**Required Dependencies:**
+- `google-generativeai` - Google's Generative AI for voice processing
+- `python-dotenv` - Environment variable management
+- `tkinter` - GUI framework (built into Python)
+- `pyautogui` - Desktop automation
+- `subprocess` - System command execution
+
+**System Requirements:**
+- Python 3.9+ 
+- Active internet connection for Gemini API
+- Valid Google AI API key
+- X11 display system (for desktop automation)
+
+## Troubleshooting
+
+### Common Issues
+
+**Error: "GOOGLE_AI_API_KEY not found"**
+- Ensure `.env` file exists in the `kali-ai-os` directory
+- Add your Google AI API key to the `.env` file
+- Restart the application
+
+**Error: "Authentication server not reachable"**
+- Check that AUTH_SERVER_URL in `.env` points to your auth server
+- Verify the auth server is running: `curl http://your-server:8000/health`
+- Update the IP address if the server has moved
+
+**Voice input not working**
+- Ensure you have a working microphone
+- Check system audio permissions
+- Verify internet connection for Gemini API
+
+**Desktop automation failing**
+- Ensure virtual display is running (handled automatically)
+- Check that required applications are installed
+- Verify X11 system is working: `echo $DISPLAY`
+
+### Performance Issues
+
+**Slow voice processing**
+- Check internet connection speed
+- Verify Google AI API quotas and limits
+- Consider shorter voice commands for faster processing
+
+**GUI responsiveness**
+- Close unnecessary applications
+- Ensure adequate system resources (4GB+ RAM recommended)
+- Check system load: `htop`
+
+### Integration Issues
+
+**Voice commands not executing desktop actions**
+- Verify desktop automation is working: test with text commands first
+- Check authentication with server
+- Ensure target applications are installed and accessible
+
+For additional help, see the main setup guide: `docs/setup_guide.md`
