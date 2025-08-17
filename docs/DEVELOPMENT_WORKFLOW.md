@@ -131,7 +131,7 @@ PGPASSWORD=your_password psql -h localhost -U kali_auth -d kali_auth_db -f migra
 | **Start services** | `docker compose up -d` |
 | **View logs** | `docker compose logs -f auth-server` |
 | **Stop services** | `docker compose down` |
-| **Run pre-commit** | `uv run --env-file ../.env pre-commit run --all-files --config ../.pre-commit-config.yaml` |
+| **Run pre-commit** | `uv run --env-file ../.env pre-commit run --all-files --config ../configs/.pre-commit-config.yaml` |
 
 ## 🔄 Git Workflow & Pre-commit
 
@@ -158,7 +158,7 @@ git push origin feat/your-feature-name
 ### Manual Pre-commit
 ```bash
 # Run all pre-commit hooks manually
-uv run --env-file ../.env pre-commit run --all-files --config ../.pre-commit-config.yaml
+uv run --env-file ../.env pre-commit run --all-files --config ../configs/.pre-commit-config.yaml
 
 # Run specific hook
 pre-commit run ruff --all-files
@@ -315,7 +315,7 @@ Before creating a Pull Request, ensure:
 - [ ] **Import sorting**: `uv run isort .` (imports properly sorted)
 - [ ] **Type checking**: `uv run mypy app/ --ignore-missing-imports` (no type errors)
 - [ ] **Security**: `uv run bandit -r app/` (no security issues)
-- [ ] **Pre-commit**: `uv run --env-file ../.env pre-commit run --all-files --config ../.pre-commit-config.yaml` passes
+- [ ] **Pre-commit**: `uv run --env-file ../.env pre-commit run --all-files --config ../configs/.pre-commit-config.yaml` passes
 - [ ] **Docker build**: `docker build -t test ./auth-server` succeeds
 - [ ] **Integration**: Services start with `docker compose up -d`
 - [ ] **API health**: `curl -f http://localhost:8000/health` returns 200
