@@ -126,69 +126,26 @@ result = desktop.click_button_by_text("Start Scan")
 
 ### 1. Quick Setup (Recommended)
 
-#### Production Installation
-```bash
-# Clone repository
-git clone <repository-url>
-cd kali-ai-os
-
-# Run automated installation (creates systemd service)
-sudo ./scripts/install_service.sh
-
-# Start the service
-kali-ai-desktop start
-
-# Test the installation
-kali-ai-desktop test
-```
-
 #### Development Setup
 ```bash
 # Install system dependencies
-sudo apt update && sudo apt install -y \
-  python3 python3-pip python3-venv \
-  xvfb x11-utils wmctrl xdotool scrot \
-  libgl1-mesa-dri libglx-mesa0 libglib2.0-0 \
-  imagemagick dbus-x11 libegl1-mesa mesa-utils
+bash setup_desktop_system.sh
 
+uv run python debug_vnc.py
+uv run python test_desktop_system.py
 # Install Python dependencies
-uv sync  # or pip install -r requirements.txt
+uv sync --all-extras # or pip install -r requirements.txt
 
 # Copy environment configuration
 cp .env.example .env
 # Edit .env to configure your settings
 
 # Run manually for development
-uv run python main.py
+uv run --env-file ../.env python run main.py
 ```
 
-### 2. Manual System Dependencies
-```bash
-# Essential system packages
-sudo apt update
-sudo apt install -y \
-  python3 python3-pip python3-venv \
-  xvfb x11-utils wmctrl xdotool scrot \
-  libgl1-mesa-dri libglx-mesa0 libglib2.0-0 libsm6 \
-  libxext6 libxrender-dev libgomp1 \
-  libgtk-3-0 libqt5widgets5 \
-  imagemagick dbus-x11 libegl1-mesa mesa-utils
 
-# Optional: Additional OCR languages
-sudo apt install -y tesseract-ocr-deu tesseract-ocr-fra
-```
 
-### 3. Python Dependencies
-```bash
-# Using uv (recommended)
-uv sync
-
-# Using pip
-pip install -r requirements.txt
-
-# Development dependencies
-pip install -r requirements/dev-requirements.txt
-```
 
 ### 4. Environment Configuration
 ```bash
@@ -273,14 +230,7 @@ python -m pytest tests/desktop/test_screen_recognition.py -v
 python -m pytest tests/desktop/test_user_activity.py -v
 ```
 
-### Integration Tests
-```bash
-# Test voice-desktop integration
-python -m pytest tests/integration/test_voice_desktop_integration.py -v
 
-# Test authentication integration
-python -m pytest tests/auth/test_auth_client.py -v
-```
 
 ## Performance Characteristics
 
@@ -441,23 +391,7 @@ This desktop automation integrates seamlessly with:
 
 The system maintains complete isolation and safety while providing powerful voice-controlled automation capabilities for cybersecurity workflows.
 
-## Production Deployment
 
-### Automated Service Installation
-```bash
-# Complete production setup
-sudo ./scripts/install_service.sh
-
-# Service management
-kali-ai-desktop start       # Start service
-kali-ai-desktop stop        # Stop service
-kali-ai-desktop status      # Check status
-kali-ai-desktop logs        # View logs
-kali-ai-desktop test        # Test functionality
-
-# Performance validation
-./scripts/performance_benchmark.py --output production_benchmark.json
-```
 
 ### Service Configuration
 After installation, the service configuration is located at:
@@ -473,11 +407,6 @@ kali-ai-desktop logs | grep -i performance
 # Update templates
 sudo cp new_templates/* /opt/kali-ai-os/templates/custom/
 
-# Restart after configuration changes
-kali-ai-desktop restart
-
-# Full system cleanup (if needed)
-sudo ./scripts/uninstall_service.sh
 ```
 
 ## VNC Server Interactive Control
@@ -571,6 +500,9 @@ sudo apt install -y \
 
 **VNC Client Not Found:**
 ```bash
+
+remmina -c vnc://localhost:5900
+
 # Install VNC clients manually if needed
 sudo apt install tigervnc-viewer
 
