@@ -151,7 +151,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         self.header_frame = ctk.CTkFrame(
             self.main_container,
             height=80,
-            fg_color=self.theme.colors["surface"],
+            fg_color=self.theme.get_color("bg_secondary"),
             corner_radius=10
         )
         self.header_frame.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 10))
@@ -167,7 +167,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
             title_frame,
             text="🤖 AI OS Control",
             font=self.title_font,
-            text_color=self.theme.colors["text_primary"]
+            text_color=self.theme.get_color("text_primary")
         )
         self.title_label.pack(side="left")
         
@@ -179,7 +179,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
             self.status_frame,
             text="● Ready",
             font=self.default_font,
-            text_color=self.theme.colors["success_color"]
+            text_color=self.theme.get_color("success")
         )
         self.status_indicator.pack()
         
@@ -224,7 +224,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         # Center panel - Chat and execution
         self.center_panel = ctk.CTkFrame(
             self.main_container,
-            fg_color=self.theme.colors["surface"],
+            fg_color=self.theme.get_color("bg_secondary"),
             corner_radius=10
         )
         self.center_panel.grid(row=1, column=1, sticky="nsew", padx=5)
@@ -251,7 +251,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         self.right_panel = ctk.CTkFrame(
             self.main_container,
             width=350,
-            fg_color=self.theme.colors["surface"],
+            fg_color=self.theme.get_color("bg_secondary"),
             corner_radius=10
         )
         self.right_panel.grid(row=1, column=2, sticky="nsew", padx=(5, 0))
@@ -278,7 +278,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         self.footer_frame = ctk.CTkFrame(
             self.main_container,
             height=60,
-            fg_color=self.theme.colors["surface"],
+            fg_color=self.theme.get_color("bg_secondary"),
             corner_radius=10
         )
         self.footer_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(10, 0))
@@ -305,7 +305,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
             system_info_frame,
             text=system_info,
             font=ctk.CTkFont(size=10),
-            text_color=self.theme.colors["text_secondary"]
+            text_color=self.theme.get_color("text_secondary")
         )
         self.system_info_label.pack()
         
@@ -317,7 +317,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
             height=30,
             command=self._emergency_stop,
             font=self.default_font,
-            fg_color=self.theme.colors["error_color"],
+            fg_color=self.theme.get_color("error"),
             hover_color=self.theme.colors.get("error_hover", "#cc0000")
         )
         self.emergency_button.grid(row=0, column=2, sticky="e", padx=20, pady=15)
@@ -683,10 +683,10 @@ Voice Commands:
         """Update status indicator."""
         
         colors = {
-            "info": self.theme.colors["primary_color"],
-            "success": self.theme.colors["success_color"],
-            "warning": self.theme.colors["warning_color"],
-            "error": self.theme.colors["error_color"]
+            "info": self.theme.get_color("primary"),
+            "success": self.theme.get_color("success"),
+            "warning": self.theme.get_color("warning"),
+            "error": self.theme.get_color("error")
         }
         
         symbols = {
