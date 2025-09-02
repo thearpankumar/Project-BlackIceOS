@@ -24,6 +24,7 @@ from .components.execution_visualizer import ExecutionVisualizer
 from .components.screenshot_preview import ScreenshotPreview
 from .components.status_panel import StatusPanel
 from .components.sidebar import Sidebar
+from .ipc.ipc_client import IPCClient
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,11 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         # UI update queue for thread-safe updates
         self.ui_update_queue = queue.Queue()
         
-        # Backend communication (will be initialized later)
+        # Backend communication
+        self.ipc_client = IPCClient(
+            host=self.settings.WS_HOST,
+            port=self.settings.WS_PORT
+        )
         self.backend_client = None
         self.orchestrator = None
         
@@ -67,6 +72,9 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         
         # Start UI update processing
         self._start_ui_update_processor()
+        
+        # Initialize backend communication
+        self._setup_backend_communication()
         
         logger.info("Professional AI Desktop App initialized successfully")
     
@@ -281,6 +289,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         self.voice_input = VoiceInputWidget(
             self.footer_frame,
             theme=self.theme,
+            ipc_client=self.ipc_client,
             on_voice_start=self._on_voice_start,
             on_voice_stop=self._on_voice_stop,
             on_transcript=self._on_voice_transcript
@@ -352,6 +361,106 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         # Start the update processor
         self.after(100, process_updates)
     
+    def _setup_backend_communication(self) -> None:
+        """Setup backend IPC communication."""
+        
+        try:
+            # Register IPC event handlers
+            self.ipc_client.register_handler("on_execution_state_changed", self._on_backend_execution_state_changed)
+            self.ipc_client.register_handler("on_plan_loaded", self._on_backend_plan_loaded)
+            self.ipc_client.register_handler("on_step_updated", self._on_backend_step_updated)
+            self.ipc_client.register_handler("on_execution_completed", self._on_backend_execution_completed)
+            self.ipc_client.register_handler("on_execution_error", self._on_backend_execution_error)
+            self.ipc_client.register_handler("on_chat_response", self._on_backend_chat_response)
+            self.ipc_client.register_handler("on_approval_request", self._on_backend_approval_request)
+            
+            # Start IPC client
+            self.ipc_client.start()
+            
+            # Update status
+            self._update_status("Connecting to backend...", "warning")
+            
+            logger.info("Backend communication setup complete")
+            
+        except Exception as e:
+            logger.error(f"Failed to setup backend communication: {e}")
+            self._update_status("Backend connection failed", "error")
+    
+    # =========================================================================
+    # Backend Event Handlers
+    # =========================================================================
+    
+    async def _on_backend_execution_state_changed(self, data: Dict[str, Any]) -> None:
+        """Handle execution state change from backend."""
+        state = data.get("state", "unknown")
+        
+        if state == "started":
+            self._update_status("Task started", "info")
+            self.execution_active = True
+        elif state == "completed":
+            self._update_status("Task completed", "success")
+            self.execution_active = False
+        elif state == "failed":
+            self._update_status("Task failed", "error")
+            self.execution_active = False
+        elif state == "paused":
+            self._update_status("Task paused", "warning")
+    
+    async def _on_backend_plan_loaded(self, data: Dict[str, Any]) -> None:
+        """Handle execution plan loaded from backend."""
+        plan_data = data.get("plan")
+        if plan_data:
+            # Update execution visualizer with the plan
+            self.execution_visualizer.update_plan(plan_data)
+            logger.info(f"Plan loaded: {plan_data.get('title', 'Unknown')}")
+    
+    async def _on_backend_step_updated(self, data: Dict[str, Any]) -> None:
+        """Handle execution step update from backend."""
+        step_index = data.get("step_index", 0)
+        status = data.get("status", "unknown")
+        
+        # Update execution visualizer
+        self.execution_visualizer.update_step_status(step_index, status)
+        
+        # Update screenshot if provided
+        screenshot = data.get("screenshot")
+        if screenshot:
+            self.screenshot_preview.update_screenshot_b64(screenshot)
+    
+    async def _on_backend_execution_completed(self, data: Dict[str, Any]) -> None:
+        """Handle execution completion from backend."""
+        success = data.get("success", False)
+        
+        if success:
+            self._update_status("Task completed successfully", "success")
+            self.chat_interface.add_message("system", "✅ Task completed successfully!")
+        else:
+            self._update_status("Task failed", "error")
+            self.chat_interface.add_message("system", "❌ Task failed")
+        
+        self.execution_active = False
+    
+    async def _on_backend_execution_error(self, data: Dict[str, Any]) -> None:
+        """Handle execution error from backend."""
+        error = data.get("error", "Unknown error")
+        self._update_status(f"Error: {error}", "error")
+        self.chat_interface.add_message("system", f"❌ Error: {error}")
+    
+    async def _on_backend_chat_response(self, data: Dict[str, Any]) -> None:
+        """Handle chat response from backend."""
+        message = data.get("message", "")
+        if message:
+            self.chat_interface.add_message("assistant", message)
+    
+    async def _on_backend_approval_request(self, data: Dict[str, Any]) -> None:
+        """Handle approval request from backend."""
+        step_title = data.get("step_title", "Unknown step")
+        step_description = data.get("step_description", "")
+        
+        # Show approval dialog (placeholder)
+        self.chat_interface.add_message("system", f"⚠️ Approval requested: {step_title}")
+        logger.info(f"Approval requested: {step_title}")
+    
     def _process_ui_update(self, update: Dict[str, Any]) -> None:
         """Process UI update safely in main thread."""
         
@@ -388,8 +497,12 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         # Update status
         self._update_status("Processing...", "warning")
         
-        # Start task execution (placeholder)
-        asyncio.create_task(self._execute_task_async(message))
+        # Send to backend via IPC
+        if self.ipc_client and self.ipc_client.is_connected():
+            self.ipc_client.execute_request(message, "supervised")
+        else:
+            self._update_status("Backend not connected", "error")
+            self.chat_interface.add_message("system", "❌ Backend service not available")
     
     def _on_voice_toggle(self) -> None:
         """Handle voice input toggle."""
@@ -441,6 +554,10 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         """Emergency stop all execution."""
         logger.warning("Emergency stop triggered!")
         
+        # Send cancel to backend
+        if self.ipc_client and self.ipc_client.is_connected():
+            self.ipc_client.cancel_execution()
+        
         self.execution_active = False
         self.current_task_id = None
         
@@ -488,6 +605,10 @@ Voice Commands:
         
         # Stop any active processes
         self._emergency_stop()
+        
+        # Close IPC connection
+        if self.ipc_client:
+            self.ipc_client.stop()
         
         # Save settings/state if needed
         self._save_app_state()

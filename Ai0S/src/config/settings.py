@@ -6,7 +6,8 @@ Loads configuration from environment variables and provides typed settings.
 import os
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
 

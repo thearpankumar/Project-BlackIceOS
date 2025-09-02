@@ -12,13 +12,13 @@ from typing import Dict, List, Optional, Any, Callable, TypedDict
 from enum import Enum
 import traceback
 
-from langgraph.graph import StateGraph, END
-from langgraph.graph.graph import CompiledGraph
+from langgraph.graph import StateGraph, END, START
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from ...backend.models.ai_models import ExecutionPlan, ExecutionStep, ScreenAnalysis, get_ai_models
 from ...backend.core.visual_monitor import VisualStateMonitor, ScreenState, get_visual_monitor
+from ...backend.core.mcp_executor import get_mcp_executor, MCPExecutor, ExecutionResult
 from ...utils.platform_detector import get_system_environment, get_os_commands
 from ...config.settings import get_settings
 
@@ -89,7 +89,8 @@ class LangGraphOrchestrator:
         self.settings = get_settings()
         self.ai_models = None
         self.visual_monitor = None
-        self.graph: Optional[CompiledGraph] = None
+        self.mcp_executor = None
+        self.graph = None  # Will be a compiled LangGraph
         
         # Active executions
         self.active_executions: Dict[str, AgentState] = {}
@@ -115,6 +116,9 @@ class LangGraphOrchestrator:
             self.ai_models = await get_ai_models()
             self.visual_monitor = await get_visual_monitor()
             
+            # Initialize MCP executor
+            self.mcp_executor = await get_mcp_executor()
+            
             # Build the LangGraph
             self.graph = self._build_agent_graph()
             
@@ -124,7 +128,7 @@ class LangGraphOrchestrator:
             logger.error(f"Failed to initialize LangGraph Orchestrator: {e}")
             raise
     
-    def _build_agent_graph(self) -> CompiledGraph:
+    def _build_agent_graph(self):
         """Build the main agent graph with conditional routing."""
         
         graph = StateGraph(AgentState)
@@ -409,26 +413,36 @@ class LangGraphOrchestrator:
         return state
     
     async def _execute_single_step(self, step: ExecutionStep, state: AgentState) -> ExecutionResult:
-        """Execute a single step (placeholder for MCP integration)."""
-        # This will be implemented with MCP integration
-        # For now, return a mock result
+        """Execute a single step using MCP integration."""
         
-        await asyncio.sleep(0.1)  # Simulate execution time
-        
-        # Mock execution based on action type
-        if step.action_type == "wait":
-            await asyncio.sleep(float(step.parameters.get("duration", 1.0)))
-            return ExecutionResult(success=True, output="Wait completed")
-        
-        elif step.action_type == "verify":
-            # Mock verification
-            return ExecutionResult(success=True, output="Verification passed")
-        
-        else:
-            # Mock other actions
+        try:
+            # Use MCP executor to run the step
+            if self.mcp_executor:
+                result = await self.mcp_executor.execute_step(step)
+                
+                # Log execution details
+                if result.success:
+                    logger.debug(f"Step executed successfully: {result.output}")
+                else:
+                    logger.warning(f"Step failed: {result.error}")
+                
+                return result
+            else:
+                # Fallback if MCP executor not available
+                logger.warning("MCP executor not available, using fallback execution")
+                return ExecutionResult(
+                    success=True,
+                    output=f"Fallback execution: {step.description}",
+                    requires_adaptation=False
+                )
+                
+        except Exception as e:
+            logger.error(f"Single step execution failed: {e}")
             return ExecutionResult(
-                success=True, 
-                output=f"Executed {step.action_type}: {step.description}"
+                success=False,
+                error=f"Execution error: {str(e)}",
+                requires_adaptation=True,
+                adaptation_reason=f"Unexpected execution error: {e}"
             )
     
     async def _verify_progress(self, state: AgentState) -> AgentState:

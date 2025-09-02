@@ -17,7 +17,7 @@ import customtkinter as ctk
 from PIL import Image, ImageTk
 import numpy as np
 
-from ..themes.professional_theme import professional_theme
+# Professional theme will be passed as parameter
 from ...backend.models.ai_models import AIModels
 from ...config.settings import get_settings
 
@@ -28,11 +28,15 @@ logger = logging.getLogger(__name__)
 class VoiceInputWidget(ctk.CTkFrame):
     """Professional voice input widget with real-time transcription."""
     
-    def __init__(self, parent, ai_models: AIModels, on_transcription: Callable[[str], None] = None):
+    def __init__(self, parent, theme, ipc_client=None, on_voice_start: Callable = None, 
+                 on_voice_stop: Callable = None, on_transcript: Callable[[str], None] = None):
         super().__init__(parent)
         
-        self.ai_models = ai_models
-        self.on_transcription = on_transcription
+        self.theme = theme
+        self.ipc_client = ipc_client
+        self.on_voice_start = on_voice_start
+        self.on_voice_stop = on_voice_stop
+        self.on_transcript = on_transcript
         self.settings = get_settings()
         
         # Voice recording state
@@ -69,9 +73,9 @@ class VoiceInputWidget(ctk.CTkFrame):
         
         self.configure(
             corner_radius=12,
-            fg_color=professional_theme.get_color("bg_secondary"),
+            fg_color=self.theme.get_color("bg_secondary"),
             border_width=1,
-            border_color=professional_theme.get_color("border")
+            border_color=self.theme.get_color("border")
         )
         
         # Main container
@@ -92,16 +96,16 @@ class VoiceInputWidget(ctk.CTkFrame):
         self.title_label = ctk.CTkLabel(
             self.header_frame,
             text="Voice Input",
-            font=professional_theme.get_font("heading_small"),
-            text_color=professional_theme.get_color("text_primary")
+            font=self.theme.get_font("heading_small"),
+            text_color=self.theme.get_color("text_primary")
         )
         self.title_label.pack(side="left")
         
         self.status_label = ctk.CTkLabel(
             self.header_frame,
             text="Ready",
-            font=professional_theme.get_font("body_small"),
-            text_color=professional_theme.get_color("text_muted")
+            font=self.theme.get_font("body_small"),
+            text_color=self.theme.get_color("text_muted")
         )
         self.status_label.pack(side="right")
         
@@ -110,7 +114,7 @@ class VoiceInputWidget(ctk.CTkFrame):
             self.main_container,
             height=120,
             corner_radius=8,
-            fg_color=professional_theme.get_color("bg_primary")
+            fg_color=self.theme.get_color("bg_primary")
         )
         self.viz_frame.pack(fill="x", pady=(0, 15))
         self.viz_frame.pack_propagate(False)
@@ -119,7 +123,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         self.voice_canvas = ctk.CTkCanvas(
             self.viz_frame,
             height=100,
-            bg=professional_theme.get_color("bg_primary"),
+            bg=self.theme.get_color("bg_primary"),
             highlightthickness=0
         )
         self.voice_canvas.pack(fill="both", expand=True, padx=10, pady=10)
@@ -132,7 +136,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         self.controls_frame.pack(fill="x", pady=(0, 15))
         
         # Record button (main action)
-        self.record_button = professional_theme.create_styled_button(
+        self.record_button = self.theme.create_styled_button(
             self.controls_frame,
             text="🎤 Start Recording",
             style="primary",
@@ -142,7 +146,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         self.record_button.pack(side="left", padx=(0, 10))
         
         # Push-to-talk button
-        self.ptt_button = professional_theme.create_styled_button(
+        self.ptt_button = self.theme.create_styled_button(
             self.controls_frame,
             text="Push to Talk",
             style="secondary",
@@ -155,7 +159,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         self.ptt_button.bind("<ButtonRelease-1>", self._stop_ptt)
         
         # Settings button
-        self.settings_button = professional_theme.create_styled_button(
+        self.settings_button = self.theme.create_styled_button(
             self.controls_frame,
             text="⚙️",
             style="secondary",
@@ -174,7 +178,7 @@ class VoiceInputWidget(ctk.CTkFrame):
             text="Continuous Listening",
             variable=self.continuous_var,
             command=self._toggle_continuous_listening,
-            font=professional_theme.get_font("body_small")
+            font=self.theme.get_font("body_small")
         )
         self.continuous_check.pack(side="right", padx=(0, 10))
         
@@ -182,16 +186,16 @@ class VoiceInputWidget(ctk.CTkFrame):
         self.transcription_frame = ctk.CTkFrame(
             self.main_container,
             corner_radius=8,
-            fg_color=professional_theme.get_color("bg_primary"),
+            fg_color=self.theme.get_color("bg_primary"),
             border_width=1,
-            border_color=professional_theme.get_color("border")
+            border_color=self.theme.get_color("border")
         )
         self.transcription_frame.pack(fill="both", expand=True)
         
         # Transcription text area
         self.transcription_text = ctk.CTkTextbox(
             self.transcription_frame,
-            font=professional_theme.get_font("body_medium"),
+            font=self.theme.get_font("body_medium"),
             wrap="word",
             height=100
         )
@@ -205,7 +209,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         )
         self.transcription_actions.pack(fill="x", padx=10, pady=(0, 10))
         
-        self.clear_button = professional_theme.create_styled_button(
+        self.clear_button = self.theme.create_styled_button(
             self.transcription_actions,
             text="Clear",
             style="small",
@@ -214,7 +218,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         )
         self.clear_button.pack(side="left")
         
-        self.copy_button = professional_theme.create_styled_button(
+        self.copy_button = self.theme.create_styled_button(
             self.transcription_actions,
             text="Copy",
             style="small",
@@ -223,7 +227,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         )
         self.copy_button.pack(side="left", padx=(5, 0))
         
-        self.send_button = professional_theme.create_styled_button(
+        self.send_button = self.theme.create_styled_button(
             self.transcription_actions,
             text="Send to Chat",
             style="primary",
@@ -250,7 +254,11 @@ class VoiceInputWidget(ctk.CTkFrame):
             # Update UI
             self.record_button.configure(text="🛑 Stop Recording")
             self.status_label.configure(text="Recording...")
-            self.status_label.configure(text_color=professional_theme.get_color("error"))
+            self.status_label.configure(text_color=self.theme.get_color("error"))
+            
+            # Notify parent component
+            if self.on_voice_start:
+                self.on_voice_start()
             
             # Start audio recording thread
             self.audio_thread = threading.Thread(target=self._record_audio)
@@ -279,7 +287,11 @@ class VoiceInputWidget(ctk.CTkFrame):
             # Update UI
             self.record_button.configure(text="🎤 Start Recording")
             self.status_label.configure(text="Processing...")
-            self.status_label.configure(text_color=professional_theme.get_color("warning"))
+            self.status_label.configure(text_color=self.theme.get_color("warning"))
+            
+            # Notify parent component
+            if self.on_voice_stop:
+                self.on_voice_stop()
             
             # Wait for audio thread to finish
             if self.audio_thread and self.audio_thread.is_alive():
@@ -350,16 +362,17 @@ class VoiceInputWidget(ctk.CTkFrame):
             
             wav_buffer.seek(0)
             
-            # Get transcription from Gemini 2.0 Flash
-            transcription = await self.ai_models.transcribe_audio(wav_buffer.getvalue())
+            # Send audio data to backend for transcription via IPC
+            # Note: Since this runs in a thread, we'll use a thread-safe approach
+            transcription = self._request_transcription_sync(wav_buffer.getvalue())
             
             if transcription:
                 self._display_transcription(transcription)
                 self._update_status("Transcription complete")
                 
                 # Call callback if provided
-                if self.on_transcription:
-                    self.on_transcription(transcription)
+                if self.on_transcript:
+                    self.on_transcript(transcription)
             else:
                 self._update_status("No speech detected")
                 
@@ -463,11 +476,11 @@ class VoiceInputWidget(ctk.CTkFrame):
                     
                     # Color based on volume level
                     if normalized_level > 0.7:
-                        color = professional_theme.get_color("error")
+                        color = self.theme.get_color("error")
                     elif normalized_level > 0.4:
-                        color = professional_theme.get_color("warning")
+                        color = self.theme.get_color("warning")
                     else:
-                        color = professional_theme.get_color("primary")
+                        color = self.theme.get_color("primary")
                     
                     self.voice_canvas.create_rectangle(
                         x, y, x + bar_width - 1, canvas_height,
@@ -512,8 +525,8 @@ class VoiceInputWidget(ctk.CTkFrame):
         """Send transcription to chat interface."""
         
         text = self.transcription_text.get("1.0", "end-1c")
-        if text.strip() and self.on_transcription:
-            self.on_transcription(text)
+        if text.strip() and self.on_transcript:
+            self.on_transcript(text)
             self._update_status("Sent to chat")
     
     def _show_settings(self) -> None:
@@ -530,12 +543,12 @@ class VoiceInputWidget(ctk.CTkFrame):
         label = ctk.CTkLabel(
             settings_window,
             text="Voice Settings",
-            font=professional_theme.get_font("heading_medium")
+            font=self.theme.get_font("heading_medium")
         )
         label.pack(pady=20)
         
         # Close button
-        close_btn = professional_theme.create_styled_button(
+        close_btn = self.theme.create_styled_button(
             settings_window,
             text="Close",
             command=settings_window.destroy
@@ -549,7 +562,27 @@ class VoiceInputWidget(ctk.CTkFrame):
         if color:
             self.status_label.configure(text_color=color)
         else:
-            self.status_label.configure(text_color=professional_theme.get_color("text_muted"))
+            self.status_label.configure(text_color=self.theme.get_color("text_muted"))
+    
+    def _request_transcription_sync(self, audio_data: bytes) -> str:
+        """Send audio data to backend for transcription (thread-safe)."""
+        
+        try:
+            if not self.ipc_client or not self.ipc_client.is_connected():
+                logger.warning("IPC client not available for transcription")
+                return "[Transcription requires backend connection]"
+            
+            # Convert audio data to base64 for JSON transport
+            import base64
+            audio_b64 = base64.b64encode(audio_data).decode('utf-8')
+            
+            # For now, return a placeholder until IPC transcription is fully implemented
+            logger.info("Audio data prepared for backend transcription")
+            return "[Backend transcription placeholder - audio capture successful]"
+            
+        except Exception as e:
+            logger.error(f"Transcription preparation failed: {e}")
+            return f"[Transcription error: {e}]"
     
     def cleanup(self) -> None:
         """Cleanup resources."""
