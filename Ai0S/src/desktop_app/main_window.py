@@ -118,7 +118,7 @@ class ProfessionalAIDesktopApp(ctk.CTk):
         ctk.set_default_color_theme("blue")
         
         # Configure custom colors
-        self.configure(fg_color=self.theme.colors["background"])
+        self.configure(fg_color=self.theme.get_color("bg_primary"))
         
         # Font configuration
         self.default_font = ctk.CTkFont(family="Segoe UI", size=12)
