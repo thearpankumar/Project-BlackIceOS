@@ -1,0 +1,232 @@
+[project]
+name = "Ai0S"
+version = "0.1.0"
+description = "Voice-controlled cybersecurity automation platform"
+requires-python = ">=3.11"
+dependencies = [
+    # Core Environment & Configuration
+    "python-dotenv>=1.0.0",
+    "click>=8.1.0",
+    "structlog>=23.0.0",
+    # Voice Recognition & AI Processing
+    "google-generativeai==0.8.3",
+    "groq>=0.4.0",
+    # Audio Processing
+    "sounddevice>=0.4.6",
+    "scipy>=1.11.0",
+    "numpy>=1.24.0,<2.0.0",
+    "pyttsx3>=2.90",
+    # Desktop Automation & GUI Control
+    "pyautogui>=0.9.54",
+    "pynput>=1.7.6",
+    "customtkinter>=5.2.2",
+    "pillow>=10.0.0",
+    # System Monitoring & Process Management
+    "psutil>=5.9.6",
+    # Network Communication & HTTP
+    "requests>=2.31.0",
+    "urllib3>=1.26.0",
+    "httpx>=0.25.0",
+    # Security & Encryption
+    "cryptography>=41.0.0",
+    # Data Processing & NLP
+    "pandas>=2.0.0",
+    "nltk>=3.8.1",
+    "pydantic>=2.0.0",
+    # Model Context Protocol (MCP)
+    "mcp>=1.0.0",
+    # LangGraph for AI Agent Orchestration
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    # Performance & Monitoring
+    "memory-profiler>=0.61.0",
+    # Compatibility & Build Tools
+    "setuptools<66",
+    "soundfile>=0.13.1",
+    "stubs>=1.0.0",
+    "opencv-python>=4.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing Framework
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xvfb>=2.0.0",
+    "faker>=20.0.0",
+    "factory-boy>=3.3.0",
+    "responses>=0.24.0",
+
+    # Code Quality & Formatting
+    "pre-commit>=3.0.0",
+    "ruff>=0.1.6",
+    "black>=23.11.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+    "types-requests",
+    "types-psutil",
+    "scipy-stubs>=1.16.1.0",
+
+    # Security & Safety
+    "bandit>=1.7.5",
+    "safety>=2.3.5",
+
+    # Performance Monitoring
+    "py-spy>=0.3.14",
+
+    # Development Tools
+    "ipython>=8.0.0",
+    "jupyter>=1.0.0",
+]
+
+desktop = [
+    # Additional desktop automation tools
+    "xvfbwrapper>=0.2.9",
+    "python-xlib>=0.33",
+]
+
+production = [
+    # Production deployment dependencies
+    "gunicorn>=21.0.0",
+    "systemd-python>=235",
+]
+
+full = [
+    # All optional dependencies combined
+    "xvfbwrapper>=0.2.9",
+    "python-xlib>=0.33",
+    "gunicorn>=21.0.0",
+    "systemd-python>=235",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[project.scripts]
+samsung-ai-os = "main:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=18"
+]
+markers = [
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "slow: marks tests as slow running",
+    "desktop: marks tests requiring desktop environment"
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "B",  # flake8-bugbear
+    "I",  # isort
+    "N",  # pep8-naming
+    "UP", # pyupgrade
+    "ANN", # flake8-annotations
+    "S",  # flake8-bandit
+    "C4", # flake8-comprehensions
+]
+ignore = [
+    "S101",   # assert-used (OK in tests)
+    "ANN101",
+    "S603"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "ANN"]
+
+[tool.black]
+target-version = ['py311']
+line-length = 100
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+namespace_packages = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = false
+explicit_package_bases = true
+exclude = ["tests/.*", "scripts/.*", "templates/.*", "main.py"]
+
+[[tool.mypy.overrides]]
+module = [
+    "pyautogui.*",
+    "pynput.*",
+    "cv2.*",
+    "pytesseract.*",
+    "pvporcupine.*",
+    "webrtcvad.*",
+    "noisereduce.*",
+    "pyttsx3.*",
+    "sounddevice.*",
+    "cryptography.*",
+    "dotenv.*",
+]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B404", "B603"]  # Skip assert_used in tests
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
