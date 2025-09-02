@@ -508,8 +508,12 @@ class IPCServer:
         if not message:
             raise ValueError("Empty chat message")
         
-        # Process with AI models
-        response = await self.ai_models.generate_response(message)
+        # Process chat message using AI models
+        # For now, use analyze_command_intent as a placeholder for chat
+        context = {"active_apps": [], "recent_actions": [], "capabilities": []}
+        intent_analysis = await self.ai_models.analyze_command_intent(message, context)
+        
+        response = intent_analysis.get("interpretation", f"I understand you want to: {message}")
         
         # Broadcast to subscribed clients
         await self._broadcast_message("chat_response", {
@@ -528,9 +532,13 @@ class IPCServer:
             raise ValueError("No audio data provided")
         
         # Transcribe with Gemini 2.0 Flash
-        transcription = await self.ai_models.transcribe_audio(audio_data)
-        
-        return {"transcription": transcription}
+        # Note: audio_data should be bytes, but might need format conversion
+        try:
+            transcription = await self.ai_models.transcribe_audio(audio_data, "webm")
+            return {"transcription": transcription}
+        except Exception as e:
+            logger.error(f"Voice transcription failed: {e}")
+            return {"transcription": "", "error": str(e)}
     
     async def _handle_get_status(self, client_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Handle status request."""

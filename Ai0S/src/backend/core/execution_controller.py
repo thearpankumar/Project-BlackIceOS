@@ -13,8 +13,8 @@ import logging
 
 from .task_planner import TaskPlanner, PlanningResult, TaskContext
 from .visual_monitor import VisualStateMonitor
-from ...desktop_app.components.execution_visualizer import ExecutionPlan, ExecutionStep, StepStatus
-from ...mcp_server.server import MCPServer
+from ..models.ai_models import ExecutionPlan, ExecutionStep
+from .mcp_executor import get_mcp_executor, MCPExecutor
 from ...utils.platform_detector import get_system_environment
 from ...config.settings import get_settings
 
@@ -42,14 +42,15 @@ class ExecutionController:
     """Advanced execution controller with MCP integration and safety controls."""
     
     def __init__(self, 
+                 ai_models,
                  task_planner: TaskPlanner,
                  visual_monitor: VisualStateMonitor,
-                 mcp_server: MCPServer,
                  ui_callbacks: Optional[Dict[str, Callable]] = None):
         
+        self.ai_models = ai_models
         self.task_planner = task_planner
         self.visual_monitor = visual_monitor
-        self.mcp_server = mcp_server
+        self.mcp_executor = None  # Will be initialized later
         self.ui_callbacks = ui_callbacks or {}
         
         self.settings = get_settings()
@@ -83,6 +84,18 @@ class ExecutionController:
             "total_execution_time": 0,
             "success_rate": 0.0
         }
+    
+    async def initialize(self) -> None:
+        """Initialize the execution controller."""
+        
+        try:
+            # Initialize MCP executor
+            self.mcp_executor = await get_mcp_executor()
+            logger.info("Execution controller initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize execution controller: {e}")
+            raise
     
     async def execute_user_request(self, user_request: str, 
                                  execution_mode: ExecutionMode = ExecutionMode.SUPERVISED) -> Dict[str, Any]:
