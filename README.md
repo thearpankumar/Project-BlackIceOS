@@ -1,4 +1,4 @@
-# Samsung AI OS Control System
+# AI OS Control System (BETA)
 
 A comprehensive dual-component system for intelligent desktop automation and secure authentication services.
 
@@ -25,7 +25,6 @@ A professional FastAPI-based authentication server with PostgreSQL, Redis, JWT t
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd Samsung-AI-os
    ```
 
 2. **Set up Ai0S (AI Control System)**
@@ -180,7 +179,7 @@ uv run pytest tests/ --cov=app
 ## 📁 Project Structure
 
 ```
-Samsung-AI-os/
+Project-BlackIceOS/
 ├── Ai0S/                          # AI Control System
 │   ├── src/Ai0S/
 │   │   ├── desktop_app/           # CustomTkinter GUI
