@@ -408,42 +408,10 @@ class LangGraphOrchestrator:
         
         # Use AI to generate the actual command to execute
         try:
-            # Ask AI to convert the step description into an executable command
-            command_prompt = f"""
-            Convert this execution step into a specific Linux command:
-            
-            Step Description: {description}
-            Target: {target}
-            Parameters: {parameters}
-            
-            Rules:
-            1. Return ONLY the command to execute (no explanation)
-            2. Use proper Linux commands (e.g., "google-chrome", "firefox", "gedit", "code", etc.)
-            3. For opening applications, use the executable name directly
-            4. For URLs, use: google-chrome "https://example.com" or firefox "https://example.com"
-            5. For files, include the full path if provided
-            6. If the application might not exist, provide alternatives separated by ||
-            
-            Examples:
-            - "Open Google Chrome" → "google-chrome"
-            - "Open Firefox and go to YouTube" → "firefox https://youtube.com"
-            - "Open text editor" → "gedit || code || nano"
-            - "Open file manager" → "nautilus || thunar || pcmanfm"
-            
-            Command:
-            """
-            
-            # Get the command from AI
-            command_response = await self.ai_models.analyze_command_intent(
-                command_prompt, 
-                {"task": "command_generation"}
+            # Get the command from AI using dedicated method
+            ai_command = await self.ai_models.generate_system_command(
+                description, target, parameters
             )
-            
-            # Extract the command (fallback if AI fails)
-            if command_response and "interpretation" in command_response:
-                ai_command = command_response["interpretation"].strip()
-            else:
-                ai_command = self._fallback_command_generation(description, target)
             
             logger.info(f"AI generated command: {ai_command}")
             
@@ -452,38 +420,10 @@ class LangGraphOrchestrator:
             
         except Exception as e:
             logger.error(f"AI command generation failed: {e}")
-            # Fallback to basic command generation
-            fallback_command = self._fallback_command_generation(description, target)
-            logger.info(f"Using fallback command: {fallback_command}")
-            return await self._execute_system_command(fallback_command, description)
+            # If AI fails, return False - no hardcoded fallbacks
+            logger.error(f"Could not generate command for: {description}")
+            return False
     
-    def _fallback_command_generation(self, description: str, target: str) -> str:
-        """Generate basic commands when AI fails."""
-        desc_lower = description.lower()
-        
-        # Basic application mappings
-        if "chrome" in desc_lower:
-            return "google-chrome || chromium-browser || chromium"
-        elif "firefox" in desc_lower:
-            return "firefox"
-        elif "browser" in desc_lower:
-            return "google-chrome || firefox || chromium-browser || xdg-open https://www.google.com"
-        elif "text editor" in desc_lower or "editor" in desc_lower:
-            return "gedit || code || nano"
-        elif "file manager" in desc_lower or "files" in desc_lower:
-            return "nautilus || thunar || pcmanfm"
-        elif "terminal" in desc_lower:
-            return "gnome-terminal || xterm || konsole"
-        elif "calculator" in desc_lower:
-            return "gnome-calculator || kcalc || xcalc"
-        elif target and target.startswith("http"):
-            return f"xdg-open '{target}'"
-        elif target and "xdg-open" in target:
-            return target  # Use the target directly if it's already an xdg-open command
-        elif target:
-            return f"xdg-open '{target}'"
-        else:
-            return f"echo 'Executing: {description}'"
     
     async def _execute_system_command(self, command_str: str, description: str) -> bool:
         """Execute system command with alternative fallbacks. Returns True if successful."""
