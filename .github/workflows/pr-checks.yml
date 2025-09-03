@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       auth-server: ${{ steps.changes.outputs.auth-server }}
-      kali-ai-os: ${{ steps.changes.outputs.kali-ai-os }}
+      ai0s: ${{ steps.changes.outputs.ai0s }}
       tasks: ${{ steps.changes.outputs.tasks }}
       docker: ${{ steps.changes.outputs.docker }}
 
@@ -75,8 +75,8 @@ jobs:
         filters: |
           auth-server:
             - 'auth-server/**'
-          kali-ai-os:
-            - 'kali-ai-os/**'
+          ai0s:
+            - 'Ai0S/**'
           tasks:
             - 'tasks/**'
           docker:
@@ -89,11 +89,11 @@ jobs:
     if: needs.changed-files.outputs.auth-server == 'true'
     uses: ./.github/workflows/auth-server-ci.yml
 
-  call-kali-ai-os-ci:
-    name: Kali AI OS Checks
+  call-ai0s-ci:
+    name: Ai0S Checks
     needs: changed-files
-    if: needs.changed-files.outputs.kali-ai-os == 'true'
-    uses: ./.github/workflows/kali-ai-os-ci.yml
+    if: needs.changed-files.outputs.ai0s == 'true'
+    uses: ./.github/workflows/ai0s-ci.yml
 
   task-validation:
     name: Task Files Validation
