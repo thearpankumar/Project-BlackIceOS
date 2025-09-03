@@ -57,10 +57,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src/Ai0S"]
 
 [project.scripts]
-ai0s = "src.launcher:main"
+ai0s = "Ai0S.launcher:main"
 
 [tool.ruff]
 target-version = "py311"
