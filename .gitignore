@@ -212,3 +212,12 @@ __marimo__/
 *.wav
 .Trash-*
 notes.txt
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
