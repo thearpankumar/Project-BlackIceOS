@@ -50,7 +50,7 @@ class StatusPanel(ctk.CTkFrame):
         """Setup the status panel UI."""
         
         self.configure(
-            corner_radius=12,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_secondary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -127,7 +127,7 @@ class StatusPanel(ctk.CTkFrame):
         
         section_frame = ctk.CTkFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -177,7 +177,7 @@ class StatusPanel(ctk.CTkFrame):
         progress_bar = ctk.CTkProgressBar(
             row_frame,
             height=15,
-            corner_radius=8,
+            corner_radius=0,
             width=150
         )
         progress_bar.pack(side="left", padx=(0, 10))

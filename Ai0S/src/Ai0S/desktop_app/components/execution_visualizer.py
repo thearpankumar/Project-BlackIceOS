@@ -85,7 +85,7 @@ class ExecutionVisualizer(ctk.CTkFrame):
         """Setup the execution visualizer UI."""
         
         self.configure(
-            corner_radius=12,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_secondary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -161,7 +161,7 @@ class ExecutionVisualizer(ctk.CTkFrame):
         # Progress overview
         self.overview_frame = ctk.CTkFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border"),
@@ -188,7 +188,7 @@ class ExecutionVisualizer(ctk.CTkFrame):
         self.overall_progress_bar = ctk.CTkProgressBar(
             self.progress_container,
             height=20,
-            corner_radius=10
+            corner_radius=0
         )
         self.overall_progress_bar.pack(fill="x", pady=(5, 0))
         self.overall_progress_bar.set(0)
@@ -219,7 +219,7 @@ class ExecutionVisualizer(ctk.CTkFrame):
         # Steps container (scrollable)
         self.steps_container = ctk.CTkScrollableFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -273,7 +273,7 @@ class ExecutionVisualizer(ctk.CTkFrame):
         # Main step container
         step_frame = ctk.CTkFrame(
             self.steps_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_secondary"),
             border_width=1,
             border_color=self._get_step_border_color(step.status),
@@ -298,7 +298,7 @@ class ExecutionVisualizer(ctk.CTkFrame):
         step_number_frame = ctk.CTkFrame(
             step_header,
             fg_color=self._get_step_status_color(step.status),
-            corner_radius=15,
+            corner_radius=0,
             width=30,
             height=30
         )
@@ -347,7 +347,7 @@ class ExecutionVisualizer(ctk.CTkFrame):
         progress_bar = ctk.CTkProgressBar(
             step_frame,
             height=6,
-            corner_radius=3
+            corner_radius=0
         )
         progress_bar.pack(fill="x", padx=60, pady=(0, 10))
         progress_bar.set(step.progress)

@@ -78,34 +78,36 @@ class ProfessionalTheme:
             "overlay": "#00000080",
         }
         
-        # Font configuration
+        # Font configuration - Friendly, humanized fonts
+        # Using widely available system fonts that feel warm and approachable
+        # Slightly larger sizes for better readability and friendlier feel
         self.fonts = {
-            "heading_large": ("Segoe UI", 24, "bold"),
-            "heading_medium": ("Segoe UI", 20, "bold"),
-            "heading_small": ("Segoe UI", 16, "bold"),
+            "heading_large": ("Helvetica Neue", 26, "bold"),
+            "heading_medium": ("Helvetica Neue", 20, "bold"), 
+            "heading_small": ("Helvetica Neue", 17, "bold"),
             
-            "body_large": ("Segoe UI", 14, "normal"),
-            "body_medium": ("Segoe UI", 12, "normal"),
-            "body_small": ("Segoe UI", 10, "normal"),
+            "body_large": ("Helvetica Neue", 15, "normal"),
+            "body_medium": ("Helvetica Neue", 14, "normal"),
+            "body_small": ("Helvetica Neue", 12, "normal"),
             
-            "mono": ("Consolas", 11, "normal"),
-            "mono_bold": ("Consolas", 11, "bold"),
+            "mono": ("Monaco", 12, "normal"),
+            "mono_bold": ("Monaco", 12, "bold"),
         }
         
         # Component-specific styling
         self.button_styles = {
             "primary": {
-                "corner_radius": 8,
+                "corner_radius": 0,
                 "height": 36,
                 "font": self.fonts["body_large"],
             },
             "secondary": {
-                "corner_radius": 6,
+                "corner_radius": 0,
                 "height": 32,
                 "font": self.fonts["body_medium"],
             },
             "small": {
-                "corner_radius": 4,
+                "corner_radius": 0,
                 "height": 28,
                 "font": self.fonts["body_small"],
             }
@@ -113,13 +115,13 @@ class ProfessionalTheme:
         
         self.input_styles = {
             "default": {
-                "corner_radius": 6,
+                "corner_radius": 0,
                 "height": 36,
                 "font": self.fonts["body_medium"],
                 "border_width": 1,
             },
             "large": {
-                "corner_radius": 8,
+                "corner_radius": 0,
                 "height": 44,
                 "font": self.fonts["body_large"],
                 "border_width": 1,
@@ -132,11 +134,11 @@ class ProfessionalTheme:
                 "border_width": 0,
             },
             "main": {
-                "corner_radius": 12,
+                "corner_radius": 0,
                 "border_width": 1,
             },
             "card": {
-                "corner_radius": 8,
+                "corner_radius": 0,
                 "border_width": 1,
             }
         }
@@ -157,9 +159,8 @@ class ProfessionalTheme:
         else:
             ctk.set_appearance_mode(mode.value)
         
-        # Create custom theme
-        theme_dict = self._create_theme_dict()
-        ctk.set_default_color_theme(theme_dict)
+        # Use built-in blue theme as base
+        ctk.set_default_color_theme("blue")
     
     def _create_theme_dict(self) -> Dict:
         """Create CustomTkinter theme dictionary."""
@@ -174,7 +175,7 @@ class ProfessionalTheme:
             
             # Buttons
             "CTkButton": {
-                "corner_radius": 8,
+                "corner_radius": 0,
                 "border_width": 0,
                 "fg_color": [self.colors["primary"], self.colors["primary"]],
                 "hover_color": [self.colors["primary_hover"], self.colors["primary_hover"]],
@@ -185,7 +186,7 @@ class ProfessionalTheme:
             
             # Frames
             "CTkFrame": {
-                "corner_radius": 12,
+                "corner_radius": 0,
                 "border_width": 1,
                 "fg_color": [self.light_colors["bg_secondary"], self.dark_colors["bg_secondary"]],
                 "border_color": [self.light_colors["border"], self.dark_colors["border"]]
@@ -198,7 +199,7 @@ class ProfessionalTheme:
             
             # Entry fields
             "CTkEntry": {
-                "corner_radius": 6,
+                "corner_radius": 0,
                 "border_width": 1,
                 "fg_color": [self.light_colors["bg_primary"], self.dark_colors["bg_primary"]],
                 "border_color": [self.light_colors["border"], self.dark_colors["border"]],
@@ -208,7 +209,7 @@ class ProfessionalTheme:
             
             # Text boxes
             "CTkTextbox": {
-                "corner_radius": 8,
+                "corner_radius": 0,
                 "border_width": 1,
                 "fg_color": [self.light_colors["bg_primary"], self.dark_colors["bg_primary"]],
                 "border_color": [self.light_colors["border"], self.dark_colors["border"]],
@@ -217,7 +218,7 @@ class ProfessionalTheme:
             
             # Scrollbars
             "CTkScrollbar": {
-                "corner_radius": 4,
+                "corner_radius": 0,
                 "border_spacing": 2,
                 "fg_color": [self.light_colors["bg_tertiary"], self.dark_colors["bg_tertiary"]],
                 "button_color": [self.light_colors["text_muted"], self.dark_colors["text_muted"]],
@@ -265,7 +266,7 @@ class ProfessionalTheme:
             width=width,
             height=height,
             fg_color=start_color,
-            corner_radius=8
+            corner_radius=0
         )
         
         # Note: CustomTkinter doesn't support true gradients,

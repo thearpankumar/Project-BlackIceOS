@@ -78,7 +78,7 @@ class ChatInterface(ctk.CTkFrame):
         """Setup the chat interface UI."""
         
         self.configure(
-            corner_radius=12,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_secondary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -134,7 +134,7 @@ class ChatInterface(ctk.CTkFrame):
         # Chat container with scrollable area
         self.chat_container = ctk.CTkFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -163,7 +163,7 @@ class ChatInterface(ctk.CTkFrame):
         # Message input frame
         self.input_frame = ctk.CTkFrame(
             self.input_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border")

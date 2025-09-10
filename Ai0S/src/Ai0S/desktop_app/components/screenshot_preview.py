@@ -55,7 +55,7 @@ class ScreenshotPreview(ctk.CTkFrame):
         """Setup the screenshot preview UI."""
         
         self.configure(
-            corner_radius=12,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_secondary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -115,7 +115,7 @@ class ScreenshotPreview(ctk.CTkFrame):
         # Screenshot display area
         self.screenshot_frame = ctk.CTkFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -148,7 +148,7 @@ class ScreenshotPreview(ctk.CTkFrame):
         self.info_container = ctk.CTkFrame(
             self.info_frame,
             fg_color=professional_theme.get_color("bg_primary"),
-            corner_radius=6,
+            corner_radius=0,
             border_width=1,
             border_color=professional_theme.get_color("border")
         )

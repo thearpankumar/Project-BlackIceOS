@@ -93,9 +93,9 @@ class SimpleAIDesktopApp(ctk.CTk):
     def _setup_window(self) -> None:
         """Setup clean window configuration."""
         
-        # Window properties
-        window_width = 900
-        window_height = 600
+        # Window properties - Bigger frame for better usability
+        window_width = 1200
+        window_height = 800
         
         # Center window
         screen_width = self.winfo_screenwidth()
@@ -105,12 +105,11 @@ class SimpleAIDesktopApp(ctk.CTk):
         
         self.geometry(f"{window_width}x{window_height}+{x}+{y}")
         self.title("AI OS Control")
-        self.minsize(700, 500)
+        self.minsize(1000, 700)
         
-        # Configure appearance
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("blue")
-        self.configure(fg_color="#1a1a1a")
+        # Configure appearance using professional theme
+        self.theme.apply_theme()
+        self.configure(fg_color=self.theme.get_color("bg_primary"))
         
         # Window close handler
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -134,7 +133,7 @@ class SimpleAIDesktopApp(ctk.CTk):
     def _create_header(self) -> None:
         """Create simple header with title and connection status."""
         
-        header_frame = ctk.CTkFrame(self, height=60, corner_radius=0)
+        header_frame = ctk.CTkFrame(self, height=60, corner_radius=0, fg_color=self.theme.get_color("bg_secondary"))
         header_frame.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         header_frame.grid_propagate(False)
         header_frame.grid_columnconfigure(1, weight=1)
@@ -142,18 +141,18 @@ class SimpleAIDesktopApp(ctk.CTk):
         # App title
         title_label = ctk.CTkLabel(
             header_frame,
-            text="🤖 AI OS Control",
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="#ffffff"
+            text="AI OS Control",
+            font=self.theme.get_font("heading_medium"),
+            text_color=self.theme.get_color("text_primary")
         )
         title_label.grid(row=0, column=0, sticky="w", padx=20, pady=15)
         
         # Connection status
         self.status_label = ctk.CTkLabel(
             header_frame,
-            text="● Starting...",
-            font=ctk.CTkFont(size=12),
-            text_color="#ffa726"
+            text="Starting...",
+            font=self.theme.get_font("body_medium"),
+            text_color=self.theme.get_color("warning")
         )
         self.status_label.grid(row=0, column=2, sticky="e", padx=20, pady=15)
     
@@ -161,7 +160,7 @@ class SimpleAIDesktopApp(ctk.CTk):
         """Create main chat/conversation area."""
         
         # Chat container
-        chat_container = ctk.CTkFrame(self, fg_color="#2b2b2b", corner_radius=10)
+        chat_container = ctk.CTkFrame(self, fg_color=self.theme.get_color("bg_secondary"), corner_radius=0)
         chat_container.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
         chat_container.grid_rowconfigure(0, weight=1)
         chat_container.grid_columnconfigure(0, weight=1)
@@ -170,8 +169,8 @@ class SimpleAIDesktopApp(ctk.CTk):
         self.chat_scrollable = ctk.CTkScrollableFrame(
             chat_container,
             fg_color="transparent",
-            scrollbar_button_color="#404040",
-            scrollbar_button_hover_color="#505050"
+            scrollbar_button_color=self.theme.get_color("border"),
+            scrollbar_button_hover_color=self.theme.get_color("primary_hover")
         )
         self.chat_scrollable.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
         self.chat_scrollable.grid_columnconfigure(0, weight=1)
@@ -182,7 +181,7 @@ class SimpleAIDesktopApp(ctk.CTk):
     def _create_input_area(self) -> None:
         """Create input area with text input and voice controls."""
         
-        input_container = ctk.CTkFrame(self, height=170, corner_radius=10, fg_color="#2b2b2b")
+        input_container = ctk.CTkFrame(self, height=170, corner_radius=0, fg_color=self.theme.get_color("bg_secondary"))
         input_container.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 20))
         input_container.grid_propagate(False)
         input_container.grid_columnconfigure(1, weight=1)
@@ -196,13 +195,13 @@ class SimpleAIDesktopApp(ctk.CTk):
         # Voice button
         self.voice_button = ctk.CTkButton(
             voice_frame,
-            text="🎤 Voice",
+            text="Voice Command",
             width=180,
             height=40,
-            font=ctk.CTkFont(size=14),
+            font=self.theme.get_font("body_medium"),
             command=self._toggle_voice,
-            fg_color="#4a9eff",
-            hover_color="#3d8bdb"
+            fg_color=self.theme.get_color("primary"),
+            hover_color=self.theme.get_color("primary_hover")
         )
         self.voice_button.pack(pady=(15, 10))
         
@@ -210,13 +209,13 @@ class SimpleAIDesktopApp(ctk.CTk):
         self.voice_status = ctk.CTkLabel(
             voice_frame,
             text="Ready",
-            font=ctk.CTkFont(size=11),
-            text_color="#888888"
+            font=self.theme.get_font("mono"),
+            text_color=self.theme.get_color("text_muted")
         )
         self.voice_status.pack()
         
         # Right side - Text input
-        text_frame = ctk.CTkFrame(input_container, fg_color="#363636")
+        text_frame = ctk.CTkFrame(input_container, fg_color=self.theme.get_color("bg_tertiary"))
         text_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 15), pady=15)
         text_frame.grid_columnconfigure(0, weight=1)
         text_frame.grid_rowconfigure(1, weight=1)  # Give more space to input
@@ -225,12 +224,14 @@ class SimpleAIDesktopApp(ctk.CTk):
         self.text_input = ctk.CTkEntry(
             text_frame,
             placeholder_text="Type your command here...",
-            font=ctk.CTkFont(size=16),
+            font=self.theme.get_font("body_large"),
             height=60,
-            corner_radius=8,
+            corner_radius=0,
             border_width=2,
-            fg_color="#4a4a4a",
-            text_color="#ffffff"
+            fg_color=self.theme.get_color("bg_primary"),
+            text_color=self.theme.get_color("text_primary"),
+            border_color=self.theme.get_color("border"),
+            placeholder_text_color=self.theme.get_color("text_muted")
         )
         self.text_input.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 15))
         self.text_input.bind("<Return>", self._on_text_submit)
@@ -242,10 +243,10 @@ class SimpleAIDesktopApp(ctk.CTk):
             width=140,
             height=45,
             command=self._send_text_message,
-            fg_color="#4a9eff",
-            hover_color="#3d8bdb",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            corner_radius=8
+            fg_color=self.theme.get_color("primary"),
+            hover_color=self.theme.get_color("primary_hover"),
+            font=self.theme.get_font("body_medium"),
+            corner_radius=0
         )
         self.send_button.grid(row=1, column=0, pady=(0, 20))
         
@@ -253,27 +254,27 @@ class SimpleAIDesktopApp(ctk.CTk):
         status_info = ctk.CTkLabel(
             text_frame,
             text=f"Ready • {self.system_env.os}",
-            font=ctk.CTkFont(size=11),
-            text_color="#aaaaaa"
+            font=self.theme.get_font("body_small"),
+            text_color=self.theme.get_color("text_muted")
         )
         status_info.grid(row=2, column=0, pady=(0, 15))
     
     def _add_welcome_message(self) -> None:
         """Add welcome message to chat."""
         
-        welcome_text = """👋 Welcome to AI OS Control!
+        welcome_text = """Welcome to AI OS Control!
 
 I'm your AI assistant. I can help you:
-• Control your computer with voice or text commands
-• Open applications and files
-• Take screenshots and analyze your screen
-• Automate tasks and workflows
+- Control your computer with voice or text commands
+- Open applications and files
+- Take screenshots and analyze your screen
+- Automate tasks and workflows
 
 Try saying or typing commands like:
-• "Open a web browser"
-• "Take a screenshot"
-• "Show me running processes"
-• "Create a new folder on desktop"
+- "Open a web browser"
+- "Take a screenshot"
+- "Show me running processes"
+- "Create a new folder on desktop"
 
 How can I help you today?"""
         
@@ -287,12 +288,12 @@ How can I help you today?"""
         msg_frame.grid(row=len(self.chat_history), column=0, sticky="ew", pady=5)
         msg_frame.grid_columnconfigure(1, weight=1)
         
-        # Sender colors and icons
+        # Sender colors and prefixes
         sender_config = {
-            "user": {"color": "#4a9eff", "icon": "👤", "align": "e"},
-            "assistant": {"color": "#4ecdc4", "icon": "🤖", "align": "w"},
-            "system": {"color": "#ffa726", "icon": "⚙️", "align": "w"},
-            "error": {"color": "#ff6b6b", "icon": "❌", "align": "w"}
+            "user": {"color": self.theme.get_color("primary"), "prefix": "You", "align": "e"},
+            "assistant": {"color": self.theme.get_color("secondary"), "prefix": "AI", "align": "w"},
+            "system": {"color": self.theme.get_color("warning"), "prefix": "System", "align": "w"},
+            "error": {"color": self.theme.get_color("error"), "prefix": "Error", "align": "w"}
         }
         
         config = sender_config.get(sender, sender_config["assistant"])
@@ -303,24 +304,26 @@ How can I help you today?"""
             bubble_frame = ctk.CTkFrame(
                 msg_frame,
                 fg_color=config["color"],
-                corner_radius=15
+                corner_radius=0
             )
             bubble_frame.grid(row=0, column=1, sticky="e", padx=(50, 0), pady=2)
         else:
             # Assistant/system messages align left
             bubble_frame = ctk.CTkFrame(
                 msg_frame,
-                fg_color="#363636" if sender == "assistant" else "#4a4a4a",
-                corner_radius=15
+                fg_color=self.theme.get_color("bg_tertiary"),
+                corner_radius=0,
+                border_width=1,
+                border_color=self.theme.get_color("border")
             )
             bubble_frame.grid(row=0, column=0, sticky="w", padx=(0, 50), pady=2)
         
-        # Icon and sender label
+        # Prefix and sender label
         if sender != "user":
             sender_label = ctk.CTkLabel(
                 bubble_frame,
-                text=f"{config['icon']} {sender.title()}",
-                font=ctk.CTkFont(size=11, weight="bold"),
+                text=f"{config['prefix']}",
+                font=self.theme.get_font("body_small"),
                 text_color=config["color"]
             )
             sender_label.pack(anchor="w", padx=15, pady=(10, 0))
@@ -329,8 +332,8 @@ How can I help you today?"""
         msg_label = ctk.CTkLabel(
             bubble_frame,
             text=message,
-            font=ctk.CTkFont(size=13),
-            text_color="#ffffff" if sender == "user" else "#e0e0e0",
+            font=self.theme.get_font("body_medium"),
+            text_color="white" if sender == "user" else self.theme.get_color("text_primary"),
             justify="left",
             wraplength=400
         )
@@ -342,8 +345,8 @@ How can I help you today?"""
             time_label = ctk.CTkLabel(
                 bubble_frame,
                 text=timestamp,
-                font=ctk.CTkFont(size=9),
-                text_color="#aaaaaa" if sender == "user" else "#888888"
+                font=self.theme.get_font("body_small"),
+                text_color=self.theme.get_color("text_muted")
             )
             time_label.pack(anchor="e" if sender == "user" else "w", padx=15, pady=(0, 8))
         
@@ -366,7 +369,7 @@ How can I help you today?"""
             
         except Exception as e:
             logger.error(f"Failed to initialize AI models: {e}")
-            self._add_chat_message("system", "⚠️ Voice transcription may not work - AI models initialization failed")
+            self._add_chat_message("system", "Warning: Voice transcription may not work - AI models initialization failed")
     
     def _setup_ai_models_sync(self) -> None:
         """Setup AI models synchronously in a thread."""
@@ -382,14 +385,14 @@ How can I help you today?"""
             logger.info("AI models initialized successfully")
             
             # Update UI from main thread
-            self.after(0, lambda: self._add_chat_message("system", "✅ Voice transcription ready (powered by Gemini 2.5 Pro)"))
+            self.after(0, lambda: self._add_chat_message("system", "Voice transcription ready (powered by Gemini 2.5 Pro)"))
             self.after(0, self._setup_voice_transcription)
             self.after(0, self._setup_orchestrator_with_models)
             self.after(100, self._update_connection_status)
             
         except Exception as e:
             logger.error(f"AI models setup failed: {e}")
-            self.after(0, lambda: self._add_chat_message("system", f"❌ AI models setup failed: {str(e)}"))
+            self.after(0, lambda: self._add_chat_message("system", f"Error: AI models setup failed: {str(e)}"))
         finally:
             if 'loop' in locals():
                 loop.close()
@@ -404,7 +407,7 @@ How can I help you today?"""
             
         except Exception as e:
             logger.error(f"Audio system initialization failed: {e}")
-            self._add_chat_message("system", "⚠️ Audio system not available")
+            self._add_chat_message("system", "Warning: Audio system not available")
     
     def _initialize_orchestrator(self) -> None:
         """Initialize orchestrator and system tools in a thread."""
@@ -415,7 +418,7 @@ How can I help you today?"""
             
         except Exception as e:
             logger.error(f"Failed to initialize orchestrator: {e}")
-            self._add_chat_message("system", "⚠️ AI orchestrator initialization failed")
+            self._add_chat_message("system", "Warning: AI orchestrator initialization failed")
     
     def _setup_orchestrator_sync(self) -> None:
         """Setup orchestrator synchronously in a thread."""
@@ -435,13 +438,13 @@ How can I help you today?"""
             logger.info("LangGraph orchestrator initialized successfully")
             
             # Update UI
-            self.after(0, lambda: self._add_chat_message("system", "✅ AI orchestrator ready - full command execution enabled"))
+            self.after(0, lambda: self._add_chat_message("system", "AI orchestrator ready - full command execution enabled"))
             self.after(0, lambda: setattr(self, 'is_connected', True))  # Set connected status
             self.after(0, self._update_connection_status)
             
         except Exception as e:
             logger.error(f"Orchestrator setup failed: {e}")
-            self.after(0, lambda: self._add_chat_message("system", f"❌ Orchestrator setup failed: {str(e)}"))
+            self.after(0, lambda: self._add_chat_message("system", f"Error: Orchestrator setup failed: {str(e)}"))
         finally:
             if 'loop' in locals():
                 loop.close()
@@ -458,7 +461,7 @@ How can I help you today?"""
         """Toggle voice input recording."""
         
         if not self.audio:
-            self._add_chat_message("system", "⚠️ Audio system not available")
+            self._add_chat_message("system", "Warning: Audio system not available")
             return
         
         if self.is_recording:
@@ -470,7 +473,7 @@ How can I help you today?"""
         """Start voice recording."""
         
         if not self.ai_models:
-            self._add_chat_message("system", "⚠️ AI models not ready for transcription")
+            self._add_chat_message("system", "Warning: AI models not ready for transcription")
             return
         
         try:
@@ -479,13 +482,13 @@ How can I help you today?"""
             
             # Update UI
             self.voice_button.configure(
-                text="🔴 Stop",
-                fg_color="#ff6b6b",
-                hover_color="#e55555"
+                text="Stop Recording",
+                fg_color=self.theme.get_color("error"),
+                hover_color=self.theme.get_color("error_hover")
             )
             self.voice_status.configure(
                 text="Recording...",
-                text_color="#ff6b6b"
+                text_color=self.theme.get_color("error")
             )
             
             # Start recording in thread
@@ -497,7 +500,7 @@ How can I help you today?"""
             
         except Exception as e:
             logger.error(f"Failed to start voice recording: {e}")
-            self._add_chat_message("system", f"❌ Recording failed: {str(e)}")
+            self._add_chat_message("system", f"Error: Recording failed: {str(e)}")
             self.is_recording = False
     
     def _stop_voice_recording(self) -> None:
@@ -512,12 +515,12 @@ How can I help you today?"""
             # Update UI
             self.voice_button.configure(
                 text="🎤 Voice",
-                fg_color="#4a9eff",
-                hover_color="#3d8bdb"
+                fg_color=self.theme.get_color("primary"),
+                hover_color=self.theme.get_color("primary_hover")
             )
             self.voice_status.configure(
                 text="Processing...",
-                text_color="#ffa726"
+                text_color=self.theme.get_color("warning")
             )
             
             # Wait for recording thread
@@ -531,7 +534,7 @@ How can I help you today?"""
             
         except Exception as e:
             logger.error(f"Failed to stop recording: {e}")
-            self._add_chat_message("system", f"❌ Processing failed: {str(e)}")
+            self._add_chat_message("system", f"Error: Processing failed: {str(e)}")
     
     def _record_audio(self) -> None:
         """Record audio in background thread."""
@@ -561,7 +564,7 @@ How can I help you today?"""
         
         try:
             if not self.audio_buffer:
-                self.after(0, lambda: self.voice_status.configure(text="No audio recorded", text_color="#ff6b6b"))
+                self.after(0, lambda: self.voice_status.configure(text="No audio recorded", text_color=self.theme.get_color("error")))
                 return
             
             # Create new event loop for this thread
@@ -590,18 +593,18 @@ How can I help you today?"""
                 clean_transcript = transcript.strip()
                 
                 # Update UI from main thread
-                self.after(0, lambda: self._add_chat_message("user", f"🎤 {clean_transcript}"))
-                self.after(0, lambda: self.voice_status.configure(text="Ready", text_color="#4ecdc4"))
+                self.after(0, lambda: self._add_chat_message("user", f"Voice: {clean_transcript}"))
+                self.after(0, lambda: self.voice_status.configure(text="Ready", text_color=self.theme.get_color("success")))
                 self.after(0, lambda: self._send_command(clean_transcript))
                 
             else:
-                self.after(0, lambda: self.voice_status.configure(text="No speech detected", text_color="#ff6b6b"))
-                self.after(0, lambda: self._add_chat_message("system", "⚠️ No speech detected in recording"))
+                self.after(0, lambda: self.voice_status.configure(text="No speech detected", text_color=self.theme.get_color("error")))
+                self.after(0, lambda: self._add_chat_message("system", "Warning: No speech detected in recording"))
             
         except Exception as e:
             logger.error(f"Voice transcription failed: {e}")
-            self.after(0, lambda: self.voice_status.configure(text="Transcription failed", text_color="#ff6b6b"))
-            self.after(0, lambda: self._add_chat_message("system", f"❌ Transcription failed: {str(e)}"))
+            self.after(0, lambda: self.voice_status.configure(text="Transcription failed", text_color=self.theme.get_color("error")))
+            self.after(0, lambda: self._add_chat_message("system", f"Error: Transcription failed: {str(e)}"))
         finally:
             if 'loop' in locals():
                 loop.close()
@@ -632,14 +635,14 @@ How can I help you today?"""
         
         if not self.orchestrator:
             # Not ready yet
-            self._add_chat_message("system", f"🔄 Received: {command}")
-            self._add_chat_message("assistant", "🔌 AI orchestrator not ready yet, please wait...")
+            self._add_chat_message("system", f" Received: {command}")
+            self._add_chat_message("assistant", " AI orchestrator not ready yet, please wait...")
             return
         
         # Execute directly via orchestrator
         try:
             logger.info(f"Executing command via orchestrator: {command}")
-            self._add_chat_message("system", f"🔄 Processing: {command}")
+            self._add_chat_message("system", f" Processing: {command}")
             
             # Update status
             self.execution_active = True
@@ -650,7 +653,7 @@ How can I help you today?"""
             
         except Exception as e:
             logger.error(f"Failed to execute command: {e}")
-            self._add_chat_message("error", f"❌ Failed to execute command: {str(e)}")
+            self._add_chat_message("error", f"Error: Failed to execute command: {str(e)}")
             self.execution_active = False
             self._update_connection_status()
     
@@ -669,15 +672,15 @@ How can I help you today?"""
             self.current_task_id = task_id
             
             # Update UI from main thread
-            self.after(0, lambda: self._add_chat_message("assistant", f"✅ Task started: {task_id[:8]}..."))
-            self.after(0, lambda: self._add_chat_message("assistant", "🔄 Executing your request..."))
+            self.after(0, lambda: self._add_chat_message("assistant", f" Task started: {task_id[:8]}..."))
+            self.after(0, lambda: self._add_chat_message("assistant", " Executing your request..."))
             
             # Start monitoring task status
             self.after(0, self._start_task_monitoring)
             
         except Exception as e:
             logger.error(f"Command execution failed: {e}")
-            self.after(0, lambda: self._add_chat_message("error", f"❌ Execution failed: {str(e)}"))
+            self.after(0, lambda: self._add_chat_message("error", f"Error: Execution failed: {str(e)}"))
             self.after(0, lambda: setattr(self, 'execution_active', False))
             self.after(0, self._update_connection_status)
         finally:
@@ -705,26 +708,26 @@ How can I help you today?"""
                 logger.info(f"Task {self.current_task_id[:8]}... status: {task_status}, step: {current_step}/{total_steps}")
                 
                 if task_status == "completed":
-                    self._add_chat_message("assistant", "✅ Task completed successfully!")
+                    self._add_chat_message("assistant", " Task completed successfully!")
                     self.current_task_id = None
                     self.execution_active = False
                     self._update_connection_status()
                     return
                 elif task_status == "failed":
                     error_msg = errors[-1] if errors else "Unknown error"
-                    self._add_chat_message("error", f"❌ Task failed: {error_msg}")
+                    self._add_chat_message("error", f"Error: Task failed: {error_msg}")
                     self.current_task_id = None
                     self.execution_active = False
                     self._update_connection_status()
                     return
                 elif task_status == "in_progress" and total_steps > 0:
-                    self._add_chat_message("system", f"🔄 Step {current_step + 1}/{total_steps}")
+                    self._add_chat_message("system", f" Step {current_step + 1}/{total_steps}")
                 
                 # Continue monitoring
                 self.after(2000, self._check_task_status)  # Check every 2 seconds
             else:
                 # Task not found, might be completed
-                self._add_chat_message("assistant", "✅ Task execution finished")
+                self._add_chat_message("assistant", " Task execution finished")
                 self.current_task_id = None
                 self.execution_active = False
                 self._update_connection_status()
@@ -743,23 +746,23 @@ How can I help you today?"""
         if self.is_connected:
             if self.execution_active:
                 self.status_label.configure(
-                    text="● Executing...",
-                    text_color="#ffa726"
+                    text=" Executing...",
+                    text_color=self.theme.get_color("warning")
                 )
             else:
                 self.status_label.configure(
-                    text="● Ready (AI enabled)",
-                    text_color="#4ecdc4"
+                    text=" Ready (AI enabled)",
+                    text_color=self.theme.get_color("success")
                 )
         elif hasattr(self, 'ai_models') and self.ai_models:
             self.status_label.configure(
-                text="● Voice only",
-                text_color="#ffa726"
+                text=" Voice only",
+                text_color=self.theme.get_color("warning")
             )
         else:
             self.status_label.configure(
-                text="● Starting up...",
-                text_color="#ffa726"
+                text=" Starting up...",
+                text_color=self.theme.get_color("warning")
             )
     
     

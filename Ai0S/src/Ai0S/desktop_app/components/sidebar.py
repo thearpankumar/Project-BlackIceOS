@@ -107,7 +107,7 @@ class Sidebar(ctk.CTkFrame):
         self.tab_frame = ctk.CTkFrame(
             self.header_frame,
             fg_color=professional_theme.get_color("bg_primary"),
-            corner_radius=8,
+            corner_radius=0,
             border_width=1,
             border_color=professional_theme.get_color("border")
         )
@@ -132,7 +132,7 @@ class Sidebar(ctk.CTkFrame):
         # Quick actions section
         self.actions_frame = ctk.CTkFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border"),
@@ -195,7 +195,7 @@ class Sidebar(ctk.CTkFrame):
         # Content area (scrollable)
         self.content_frame = ctk.CTkScrollableFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_primary"),
             border_width=1,
             border_color=professional_theme.get_color("border")
@@ -321,7 +321,7 @@ class Sidebar(ctk.CTkFrame):
         
         item_frame = ctk.CTkFrame(
             self.content_frame,
-            corner_radius=6,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_secondary"),
             border_width=1,
             border_color=professional_theme.get_color("border"),
@@ -430,7 +430,7 @@ class Sidebar(ctk.CTkFrame):
         
         item_frame = ctk.CTkFrame(
             self.content_frame,
-            corner_radius=6,
+            corner_radius=0,
             fg_color=professional_theme.get_color("bg_secondary"),
             border_width=1,
             border_color=professional_theme.get_color("border"),

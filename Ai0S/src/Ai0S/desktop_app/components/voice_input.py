@@ -72,7 +72,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         """Setup the voice input user interface."""
         
         self.configure(
-            corner_radius=12,
+            corner_radius=0,
             fg_color=self.theme.get_color("bg_secondary"),
             border_width=1,
             border_color=self.theme.get_color("border")
@@ -113,7 +113,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         self.viz_frame = ctk.CTkFrame(
             self.main_container,
             height=120,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=self.theme.get_color("bg_primary")
         )
         self.viz_frame.pack(fill="x", pady=(0, 15))
@@ -185,7 +185,7 @@ class VoiceInputWidget(ctk.CTkFrame):
         # Transcription display
         self.transcription_frame = ctk.CTkFrame(
             self.main_container,
-            corner_radius=8,
+            corner_radius=0,
             fg_color=self.theme.get_color("bg_primary"),
             border_width=1,
             border_color=self.theme.get_color("border")
