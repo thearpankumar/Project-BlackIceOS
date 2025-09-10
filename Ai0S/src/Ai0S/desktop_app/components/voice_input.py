@@ -18,7 +18,7 @@ from PIL import Image, ImageTk
 import numpy as np
 
 # Professional theme will be passed as parameter
-from ...models.ai_models import AIModels
+from ...backend.models.ai_models import AIModels
 from ...config.settings import get_settings
 
 

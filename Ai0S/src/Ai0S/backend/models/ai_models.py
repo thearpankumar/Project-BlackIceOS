@@ -8,12 +8,14 @@ import base64
 import asyncio
 import json
 import logging
+import os
 from typing import Dict, List, Optional, Union, Any
 from dataclasses import dataclass
 from enum import Enum
 import aiohttp
 import google.generativeai as genai
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 
 from ...config.settings import get_settings
 
@@ -36,7 +38,7 @@ class ModelConfig:
     gemini_model: str = "gemini-2.5-flash"
     max_tokens: int = 4096
     temperature: float = 0.1
-    timeout: int = 30
+    timeout: int = 15  # Reduced timeout to prevent hanging
 
 
 class ExecutionPlan(BaseModel):
@@ -136,48 +138,20 @@ class AIModels:
             # Encode screenshot to base64
             screenshot_b64 = base64.b64encode(screenshot_data).decode('utf-8')
             
-            # Create detailed prompt for screen analysis
+            # Simplified prompt for faster, more reliable analysis
             analysis_prompt = """
-            Analyze this screenshot and provide a detailed JSON analysis with the following structure:
+            Analyze this screenshot and return a JSON response with this structure:
             {
-                "applications": ["list of visible applications"],
-                "ui_elements": [
-                    {
-                        "type": "button|input|menu|window|dialog",
-                        "text": "visible text",
-                        "position": {"x": 0, "y": 0},
-                        "size": {"width": 0, "height": 0},
-                        "clickable": true/false,
-                        "description": "element description"
-                    }
-                ],
-                "text_content": ["all visible text content"],
-                "clickable_elements": [
-                    {
-                        "element_id": "unique_id",
-                        "text": "element text",
-                        "type": "element type",
-                        "coordinates": {"x": 0, "y": 0}
-                    }
-                ],
-                "unexpected_elements": [
-                    {
-                        "type": "popup|dialog|notification|error",
-                        "description": "what appeared unexpectedly"
-                    }
-                ],
-                "confidence_score": 0.95,
-                "recommendations": ["suggested next actions"]
+                "applications": ["chrome", "terminal"],
+                "ui_elements": [{"type": "window", "text": "Chrome Browser", "clickable": true}],
+                "text_content": ["visible text"],
+                "clickable_elements": [{"text": "element", "type": "button"}],
+                "unexpected_elements": [],
+                "confidence_score": 0.9,
+                "recommendations": ["next action to take"]
             }
             
-            Focus on identifying:
-            1. All interactive UI elements with precise coordinates
-            2. Any popups, dialogs, or unexpected windows
-            3. Current application state and context
-            4. Available actions and clickable elements
-            5. Any error messages or alerts
-            
-            Return valid JSON only.
+            Keep it simple and fast. Return only valid JSON, no markdown.
             """
             
             # Use Gemini 2.5 Pro for vision analysis
@@ -191,37 +165,99 @@ class AIModels:
             # Convert bytes to PIL Image
             image = Image.open(io.BytesIO(screenshot_data))
             
-            # Use Gemini 2.5 Pro specifically for vision
-            model = genai.GenerativeModel('gemini-2.5-pro')
+            # Use Gemini 2.5 Flash for faster vision analysis (Pro is too slow)
+            # Configure with relaxed safety settings for UI screenshots
+            safety_settings = [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
+            ]
             
-            response = await asyncio.to_thread(
-                model.generate_content,
-                [analysis_prompt, image],
-                generation_config=genai.types.GenerationConfig(
-                    temperature=self.config.temperature,
-                    max_output_tokens=self.config.max_tokens
-                )
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            
+            # Use shorter timeout and reduced token limit for faster response
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    model.generate_content,
+                    [analysis_prompt, image],
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.1,  # Lower temperature for consistency
+                        max_output_tokens=1024  # Reduced tokens for speed
+                    ),
+                    safety_settings=safety_settings
+                ),
+                timeout=10  # Reduced timeout to 10 seconds
             )
             
-            # Parse Gemini response
-            response_text = response.text
-            analysis_json = json.loads(response_text)
+            # Parse Gemini response with safety and error handling
+            if not response.candidates or not response.candidates[0].content.parts:
+                finish_reason = response.candidates[0].finish_reason if response.candidates else "unknown"
+                logger.error(f"Empty response from Gemini vision model. Finish reason: {finish_reason}")
+                
+                if finish_reason == 2:  # SAFETY filter
+                    logger.warning("Gemini blocked screenshot analysis due to safety filters")
+                    # Return minimal safe analysis
+                    return ScreenAnalysis(
+                        applications=["browser"],
+                        ui_elements=[{"type": "window", "text": "Application Window", "clickable": True}],
+                        text_content=["Content filtered by safety system"],
+                        clickable_elements=[{"text": "window", "type": "application"}],
+                        unexpected_elements=[],
+                        confidence_score=0.3,
+                        recommendations=["Continue with basic navigation"]
+                    )
+                
+                raise ValueError(f"Empty response from AI model (finish_reason: {finish_reason})")
+            
+            response_text = response.text.strip()
+            
+            if not response_text:
+                logger.error("Empty response text from Gemini vision model")
+                raise ValueError("Empty response from AI model")
+            
+            # Handle markdown-wrapped JSON
+            if response_text.startswith('```json'):
+                start = response_text.find('```json') + 7
+                end = response_text.rfind('```')
+                if end > start:
+                    response_text = response_text[start:end].strip()
+                    logger.info("Extracted JSON from markdown wrapper")
+            
+            try:
+                analysis_json = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse AI response as JSON: {e}")
+                logger.error(f"Response text: {response_text[:500]}...")
+                raise ValueError(f"JSON parsing error: {e}")
+            
             screen_analysis = ScreenAnalysis(**analysis_json)
             
             logger.info(f"Screen analysis completed with confidence: {screen_analysis.confidence_score}")
             return screen_analysis
             
+        except asyncio.TimeoutError:
+            logger.error(f"Screen analysis timed out after 10 seconds")
+            return ScreenAnalysis(
+                applications=["unknown"],
+                ui_elements=[{"type": "window", "text": "Timeout", "clickable": False}],
+                text_content=["Analysis timed out"],
+                clickable_elements=[],
+                unexpected_elements=[],
+                confidence_score=0.1,
+                recommendations=["Retry analysis or proceed manually"]
+            )
         except Exception as e:
             logger.error(f"Screen analysis failed: {e}")
             # Return basic fallback analysis
             return ScreenAnalysis(
-                applications=[],
-                ui_elements=[],
-                text_content=[],
+                applications=["unknown"],
+                ui_elements=[{"type": "window", "text": "Error", "clickable": False}],
+                text_content=["Analysis failed"],
                 clickable_elements=[],
                 unexpected_elements=[],
                 confidence_score=0.0,
-                recommendations=["Screenshot analysis failed - manual intervention required"]
+                recommendations=["Analysis failed - manual intervention required"]
             )
     
     async def create_execution_plan(
@@ -526,14 +562,23 @@ class AIModels:
 
 
 async def create_ai_models() -> AIModels:
-    """Factory function to create AI models with configuration."""
-    settings = get_settings()
+    """Factory function to create AI models with configuration from .env file."""
+    # Load environment variables from .env
+    load_dotenv()
+    
+    # Use GEMINI_API_KEY from .env with fallback to GOOGLE_AI_API_KEY
+    gemini_api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_AI_API_KEY')
+    
+    if not gemini_api_key:
+        raise ValueError("GEMINI_API_KEY or GOOGLE_AI_API_KEY must be set in .env file")
     
     config = ModelConfig(
-        gemini_api_key=settings.GEMINI_API_KEY,
-        gemini_model=getattr(settings, 'GEMINI_MODEL', 'gemini-2.5-flash'),
+        gemini_api_key=gemini_api_key,
+        gemini_model=os.getenv('GEMINI_MODEL', 'gemini-2.5-flash'),
+        timeout=int(os.getenv('GEMINI_TIMEOUT', '15'))  # Configurable timeout
     )
     
+    logger.info(f"AI models configured with timeout: {config.timeout}s")
     return AIModels(config)
 
 

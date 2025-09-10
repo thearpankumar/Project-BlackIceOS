@@ -18,13 +18,14 @@ import pyaudio
 import wave
 import io
 import base64
+import concurrent.futures
 import numpy as np
 
 from ..config.settings import get_settings
 from ..utils.platform_detector import get_system_environment
 from .themes.professional_theme import ProfessionalTheme
-from ..models.ai_models import create_ai_models
-from ..agents.orchestrator.langgraph_orchestrator import LangGraphOrchestrator
+from ..backend.models.ai_models import create_ai_models
+from ..agents.orchestrator.intelligent_orchestrator import get_intelligent_orchestrator
 from ..mcp_server.tools.system_tools import SystemTools
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,11 @@ class SimpleAIDesktopApp(ctk.CTk):
         # Task tracking
         self.current_task_id = None
         
+        # Shared asyncio event loop for all async operations
+        self.async_executor = None
+        self.event_loop = None
+        self._setup_async_infrastructure()
+        
         # Chat history
         self.chat_history = []
         
@@ -89,6 +95,53 @@ class SimpleAIDesktopApp(ctk.CTk):
         self.after(1000, self._update_connection_status)
         
         logger.info("Simple AI Desktop App initialized")
+    
+    def _setup_async_infrastructure(self) -> None:
+        """Setup shared asyncio event loop infrastructure to avoid conflicts."""
+        try:
+            # Create a thread pool executor for async operations
+            self.async_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+            
+            # Start dedicated event loop thread
+            self.async_loop_thread = threading.Thread(
+                target=self._run_async_loop, 
+                daemon=True
+            )
+            self.async_loop_thread.start()
+            
+            logger.info("✅ Async infrastructure initialized with dedicated event loop")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to setup async infrastructure: {e}")
+            self.async_executor = None
+            self.event_loop = None
+    
+    def _run_async_loop(self) -> None:
+        """Run dedicated asyncio event loop in background thread."""
+        try:
+            # Create and set event loop for this thread
+            self.event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.event_loop)
+            
+            logger.info("🔄 Dedicated async event loop started")
+            
+            # Run forever
+            self.event_loop.run_forever()
+            
+        except Exception as e:
+            logger.error(f"❌ Async event loop failed: {e}")
+        finally:
+            if self.event_loop:
+                self.event_loop.close()
+    
+    def _run_async_task(self, coro) -> concurrent.futures.Future:
+        """Schedule async task on the dedicated event loop."""
+        if not self.event_loop or self.event_loop.is_closed():
+            logger.error("❌ Event loop not available")
+            return None
+            
+        # Schedule coroutine on the dedicated loop
+        return asyncio.run_coroutine_threadsafe(coro, self.event_loop)
     
     def _setup_window(self) -> None:
         """Setup clean window configuration."""
@@ -421,24 +474,34 @@ How can I help you today?"""
             self._add_chat_message("system", "Warning: AI orchestrator initialization failed")
     
     def _setup_orchestrator_sync(self) -> None:
-        """Setup orchestrator synchronously in a thread."""
+        """Setup intelligent orchestrator using shared event loop."""
         
         try:
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # Wait for event loop to be ready
+            max_wait = 10  # 10 seconds
+            wait_count = 0
+            while (not self.event_loop or self.event_loop.is_closed()) and wait_count < max_wait:
+                time.sleep(1)
+                wait_count += 1
             
-            # Initialize system tools first
+            if not self.event_loop or self.event_loop.is_closed():
+                raise RuntimeError("Shared event loop not available")
+            
+            # Initialize system tools first (sync operation)
             self.system_tools = SystemTools()
             logger.info("System tools initialized successfully")
             
-            # Initialize orchestrator and call its initialize method
-            self.orchestrator = LangGraphOrchestrator()
-            loop.run_until_complete(self.orchestrator.initialize())
-            logger.info("LangGraph orchestrator initialized successfully")
+            # Initialize intelligent orchestrator using shared event loop
+            future = self._run_async_task(get_intelligent_orchestrator())
+            if future:
+                self.orchestrator = future.result(timeout=30)  # 30 second timeout
+                logger.info("✅ Intelligent Multi-Agent orchestrator initialized successfully")
+            
+            # Set UI callback for real-time updates
+            self.orchestrator.set_ui_callback(self._handle_orchestrator_update)
             
             # Update UI
-            self.after(0, lambda: self._add_chat_message("system", "AI orchestrator ready - full command execution enabled"))
+            self.after(0, lambda: self._add_chat_message("system", "🧠 Intelligent Multi-Agent AI ready - advanced recursive execution enabled"))
             self.after(0, lambda: setattr(self, 'is_connected', True))  # Set connected status
             self.after(0, self._update_connection_status)
             
@@ -448,6 +511,42 @@ How can I help you today?"""
         finally:
             if 'loop' in locals():
                 loop.close()
+    
+    def _handle_orchestrator_update(self, update: Dict[str, Any]) -> None:
+        """Handle real-time updates from intelligent orchestrator - sync version."""
+        try:
+            event_type = update.get("event_type", "unknown")
+            task_id = update.get("task_id", "unknown")
+            
+            logger.info(f"🔔 UI callback received: {event_type} for task {task_id[:8]}...")
+            
+            if event_type == "task_started":
+                user_intent = update.get("user_intent", "unknown task")
+                self.after(0, lambda: self._add_chat_message("assistant", f"🚀 Starting: {user_intent}"))
+                
+            elif event_type == "status_update":
+                data = update.get("data", {})
+                status = data.get("status", "unknown")
+                step = data.get("current_step", 0)
+                confidence = data.get("confidence_score", 0.0)
+                
+                if status == "completed":
+                    reason = data.get("completion_reason", "Task completed")
+                    self.after(0, lambda: self._add_chat_message("assistant", f"✅ Completed: {reason}"))
+                    self.after(0, lambda: setattr(self, 'execution_active', False))
+                elif status == "failed":
+                    reason = data.get("completion_reason", "Task failed")
+                    self.after(0, lambda: self._add_chat_message("assistant", f"❌ Failed: {reason}"))
+                    self.after(0, lambda: setattr(self, 'execution_active', False))
+                else:
+                    self.after(0, lambda: self._add_chat_message("system", f"📊 Step {step}: {status} (confidence: {confidence:.2f})"))
+                    
+            elif event_type == "task_cancelled":
+                self.after(0, lambda: self._add_chat_message("system", f"⏹️ Task {task_id[:8]}... cancelled"))
+                self.after(0, lambda: setattr(self, 'execution_active', False))
+                
+        except Exception as e:
+            logger.error(f"Orchestrator update handler failed: {e}")
     
     def _setup_orchestrator_with_models(self) -> None:
         """Setup orchestrator after AI models are ready."""
@@ -567,9 +666,7 @@ How can I help you today?"""
                 self.after(0, lambda: self.voice_status.configure(text="No audio recorded", text_color=self.theme.get_color("error")))
                 return
             
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # Use shared event loop instead of creating new one
             
             # Convert audio buffer to WAV format
             audio_data = b''.join(self.audio_buffer)
@@ -585,8 +682,12 @@ How can I help you today?"""
             wav_buffer.seek(0)
             audio_bytes = wav_buffer.getvalue()
             
-            # Transcribe using Gemini
-            transcript = loop.run_until_complete(self.ai_models.transcribe_audio(audio_bytes, "wav"))
+            # Transcribe using Gemini via shared event loop
+            future = self._run_async_task(self.ai_models.transcribe_audio(audio_bytes, "wav"))
+            if future:
+                transcript = future.result(timeout=15)  # 15 second timeout
+            else:
+                transcript = None
             
             if transcript and transcript.strip():
                 # Clean up transcript
@@ -658,15 +759,16 @@ How can I help you today?"""
             self._update_connection_status()
     
     def _execute_command_sync(self, command: str) -> None:
-        """Execute command synchronously in a thread."""
+        """Execute command using shared event loop."""
         
         try:
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
             
-            # Execute command via orchestrator - returns task_id
-            task_id = loop.run_until_complete(self.orchestrator.execute_task(command))
+            # Execute command via orchestrator using shared event loop
+            future = self._run_async_task(self.orchestrator.execute_task(command))
+            if future:
+                task_id = future.result(timeout=10)  # 10 second timeout
+            else:
+                raise RuntimeError("Failed to schedule task on event loop")
             
             # Store current task ID for monitoring
             self.current_task_id = task_id
@@ -698,7 +800,24 @@ How can I help you today?"""
             return
             
         try:
-            status = self.orchestrator.get_task_status(self.current_task_id)
+            # Run async method in thread to avoid blocking Tkinter
+            threading.Thread(target=self._check_task_status_async, daemon=True).start()
+        except Exception as e:
+            logger.error(f"Error starting task status check: {e}")
+            # Continue monitoring despite error
+            self.after(5000, self._check_task_status)
+    
+    def _check_task_status_async(self) -> None:
+        """Check task status using shared event loop."""
+        try:
+            # Get status from orchestrator using shared event loop
+            future = self._run_async_task(self.orchestrator.get_task_status(self.current_task_id))
+            if future:
+                status = future.result(timeout=5)  # 5 second timeout
+            else:
+                status = None
+            
+            # Schedule UI updates on main thread
             if status:
                 task_status = status.get("status", "unknown")
                 current_step = status.get("current_step", 0)
@@ -708,34 +827,34 @@ How can I help you today?"""
                 logger.info(f"Task {self.current_task_id[:8]}... status: {task_status}, step: {current_step}/{total_steps}")
                 
                 if task_status == "completed":
-                    self._add_chat_message("assistant", " Task completed successfully!")
-                    self.current_task_id = None
-                    self.execution_active = False
-                    self._update_connection_status()
-                    return
+                    self.after(0, lambda: self._add_chat_message("assistant", "✅ Task completed successfully!"))
+                    self.after(0, lambda: setattr(self, 'current_task_id', None))
+                    self.after(0, lambda: setattr(self, 'execution_active', False))
+                    self.after(0, self._update_connection_status)
                 elif task_status == "failed":
                     error_msg = errors[-1] if errors else "Unknown error"
-                    self._add_chat_message("error", f"Error: Task failed: {error_msg}")
-                    self.current_task_id = None
-                    self.execution_active = False
-                    self._update_connection_status()
-                    return
-                elif task_status == "in_progress" and total_steps > 0:
-                    self._add_chat_message("system", f" Step {current_step + 1}/{total_steps}")
-                
-                # Continue monitoring
-                self.after(2000, self._check_task_status)  # Check every 2 seconds
+                    self.after(0, lambda: self._add_chat_message("error", f"❌ Task failed: {error_msg}"))
+                    self.after(0, lambda: setattr(self, 'current_task_id', None))
+                    self.after(0, lambda: setattr(self, 'execution_active', False))
+                    self.after(0, self._update_connection_status)
+                elif task_status == "in_progress":
+                    self.after(0, lambda: self._add_chat_message("system", f"📊 Step {current_step}: {task_status}"))
+                    # Continue monitoring from main thread
+                    self.after(3000, self._check_task_status)  # Check again in 3 seconds
             else:
                 # Task not found, might be completed
-                self._add_chat_message("assistant", " Task execution finished")
-                self.current_task_id = None
-                self.execution_active = False
-                self._update_connection_status()
+                self.after(0, lambda: self._add_chat_message("assistant", "🏁 Task execution finished"))
+                self.after(0, lambda: setattr(self, 'current_task_id', None))
+                self.after(0, lambda: setattr(self, 'execution_active', False))
+                self.after(0, self._update_connection_status)
                 
         except Exception as e:
             logger.error(f"Error checking task status: {e}")
-            # Continue monitoring despite error
-            self.after(5000, self._check_task_status)  # Check again in 5 seconds
+            # Continue monitoring despite error from main thread
+            self.after(0, lambda: self.after(5000, self._check_task_status))
+        finally:
+            if 'loop' in locals():
+                loop.close()
     
     def _update_connection_status(self) -> None:
         """Update connection status display."""
@@ -779,6 +898,20 @@ How can I help you today?"""
         if self.audio:
             try:
                 self.audio.terminate()
+            except:
+                pass
+        
+        # Cleanup shared event loop
+        if self.event_loop and not self.event_loop.is_closed():
+            try:
+                self.event_loop.call_soon_threadsafe(self.event_loop.stop)
+            except:
+                pass
+        
+        # Cleanup executor
+        if self.async_executor:
+            try:
+                self.async_executor.shutdown(wait=False)
             except:
                 pass
         
