@@ -1,3 +1,6 @@
 [submodule "blackice-cli"]
 	path = blackice-cli
 	url = https://github.com/thearpankumar/BlackIceOS-cli.git
+[submodule "MCP-OsAutomation"]
+	path = MCP-OsAutomation
+	url = https://github.com/thearpankumar/MCP-OsAutomation.git
