@@ -44,7 +44,8 @@ jobs:
     - name: Validate file changes
       run: |
         # Ensure no sensitive files are being committed
-        if git diff --name-only origin/master...HEAD | grep -E '\.(env|key|pem|p12)$'; then
+        if git diff --name-only origin/master...HEAD | grep -E '\.(env|key|pem|p12)
+; then
           echo "❌ Sensitive files detected in PR"
           exit 1
         fi
@@ -60,7 +61,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       auth-server: ${{ steps.changes.outputs.auth-server }}
-      ai0s: ${{ steps.changes.outputs.ai0s }}
       tasks: ${{ steps.changes.outputs.tasks }}
       docker: ${{ steps.changes.outputs.docker }}
 
@@ -75,8 +75,6 @@ jobs:
         filters: |
           auth-server:
             - 'auth-server/**'
-          ai0s:
-            - 'Ai0S/**'
           tasks:
             - 'tasks/**'
           docker:
@@ -88,12 +86,6 @@ jobs:
     needs: changed-files
     if: needs.changed-files.outputs.auth-server == 'true'
     uses: ./.github/workflows/auth-server-ci.yml
-
-  call-ai0s-ci:
-    name: Ai0S Checks
-    needs: changed-files
-    if: needs.changed-files.outputs.ai0s == 'true'
-    uses: ./.github/workflows/ai0s-ci.yml
 
   task-validation:
     name: Task Files Validation
