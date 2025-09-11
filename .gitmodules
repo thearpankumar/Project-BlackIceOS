@@ -1,0 +1,3 @@
+[submodule "blackice-cli"]
+	path = blackice-cli
+	url = https://github.com/thearpankumar/BlackIceOS-cli.git
