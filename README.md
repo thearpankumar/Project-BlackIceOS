@@ -4,6 +4,8 @@
 
 Samsung AI OS represents a groundbreaking fusion of intelligent command-line interfaces and semantic desktop automation, establishing a new paradigm in human-computer interaction. This project combines two revolutionary components: a brand-agnostic AI CLI tool and an advanced Model Context Protocol (MCP) automation system, creating an unprecedented platform for intelligent system control and analysis.
 
+#### NOTE: developed on Ubuntu 22.04 - (xorg) so haven't tested mcp screenshot on windows or mac
+
 ## Architecture
 
 ### Core Components
