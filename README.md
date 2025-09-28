@@ -130,7 +130,7 @@ npm run build
 
 # Setup MCP automation
 cd ../MCP-OsAutomation
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Configuration
@@ -144,7 +144,7 @@ pip install -r requirements.txt
 blackice
 
 # Test MCP automation
-python MCP-OsAutomation/start_server.py --test
+uv run python MCP-OsAutomation/start_server.py --test
 
 # Integrated workflow example
 blackice -p "Analyze the current desktop state and suggest optimizations"
